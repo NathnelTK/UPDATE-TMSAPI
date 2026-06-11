@@ -13,14 +13,18 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // --- Session 2 - Exercise 2: Dependency Injection Registrations ---
-// 1. EnrollmentWorker registered as a Singleton.
 builder.Services.AddSingleton<EnrollmentWorker>();
-// 2. IEnrollmentService registered as a Scoped service.
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
+// --- Session 2 - Exercise 3: strongly-typed Options with Validation ---
+// We bind the "Payments" configuration section to PaymentOptions, and configure it
+// to validate data annotations and fail at startup (ValidateOnStart()) if values are invalid.
+builder.Services.AddOptions<PaymentOptions>()
+    .BindConfiguration("Payments")
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // --- Session 2 - Exercise 2: Active DI Container Validation ---
-// Force scope and dependency validations during building/startup. This detects captive
-// dependencies (e.g. Asingleton trying to directly consume a scoped service) early.
 builder.Host.UseDefaultServiceProvider(options =>
 {
     options.ValidateScopes = true;
@@ -48,8 +52,6 @@ app.MapGet("/api/assessments/results", () => Results.Ok(new
 })).RequireAuthorization();
 
 // --- Session 2 - Exercise 2: Enrollment Worker Smoke Test Route ---
-// Allows triggering the singleton EnrollmentWorker, which internally resolves
-// the scoped EnrollmentService from a manual scope.
 app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
 {
     worker.ProcessBatch();
