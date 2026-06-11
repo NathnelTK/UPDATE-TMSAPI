@@ -6,41 +6,54 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // --- Session 1 - Exercise 1: Registering Authentication and Authorization Services ---
-// We register the custom "Training" authentication scheme that uses our TrainingAuthHandler.
 builder.Services
     .AddAuthentication("Training")
     .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
 
 builder.Services.AddAuthorization();
 
+// --- Session 2 - Exercise 2: Dependency Injection Registrations ---
+// 1. EnrollmentWorker registered as a Singleton.
+builder.Services.AddSingleton<EnrollmentWorker>();
+// 2. IEnrollmentService registered as a Scoped service.
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+
+// --- Session 2 - Exercise 2: Active DI Container Validation ---
+// Force scope and dependency validations during building/startup. This detects captive
+// dependencies (e.g. Asingleton trying to directly consume a scoped service) early.
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = true;
+});
+
 var app = builder.Build();
 
 // --- Session 1 - Exercise 1B: Middleware Ordering ---
-// 1. RequestLoggingMiddleware is registered first as the outer wrapper
 app.UseMiddleware<RequestLoggingMiddleware>();
-
-// 2. UseExceptionHandler is registered next to catch all downstream exceptions
 app.UseExceptionHandler();
-
-// 3. UseHttpsRedirection
 app.UseHttpsRedirection();
-
-// 4. UseRouting
 app.UseRouting();
-
-// 5. UseAuthentication and UseAuthorization
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
 // --- Session 1 - Exercise 1: Secured Minimal API Endpoint ---
-// This endpoint requires authorization, so callers without a valid "X-Training-User" header will receive a 401.
 app.MapGet("/api/assessments/results", () => Results.Ok(new
 {
     courseCode = "CS-101",
     studentId = "S-001",
     letterGrade = "A"
 })).RequireAuthorization();
+
+// --- Session 2 - Exercise 2: Enrollment Worker Smoke Test Route ---
+// Allows triggering the singleton EnrollmentWorker, which internally resolves
+// the scoped EnrollmentService from a manual scope.
+app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
+{
+    worker.ProcessBatch();
+    return Results.Ok("processed");
+});
 
 app.Run();
