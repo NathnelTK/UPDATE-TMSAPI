@@ -1,11 +1,19 @@
+using Asp.Versioning;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
-using TmsApi.Infrastructure.Persistence;
-using TmsApi.Domain.Entities;
-using TmsApi.Filters;
-using TmsApi.Api.Legacy;
 using TmsApi.Application.Interfaces;
+using TmsApi.Application.Behaviors;
+using TmsApi.Application.Enrollments.Commands;
+using TmsApi.Application.Enrollments.Queries;
+using TmsApi.ExceptionHandlers;
+using TmsApi.Filters;
+using TmsApi.Infrastructure.Persistence;
+using TmsApi.Middleware;
+using TmsApi.Domain.Entities;
+using TmsApi.Api.Legacy;
 using TmsApi.Infrastructure.Persistence.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,6 +44,36 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<ILegacyEnrollmentService, LegacyEnrollmentService>();
 
+// --- M7 Session 1 - Exercise 1: API Versioning ---
+builder.Services
+    .AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    })
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
+
+// --- M7 Session 1 - Exercise 2: MediatR with CQRS ---
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));
+
+// --- M7 Session 1 - Exercise 2: FluentValidation ---
+builder.Services.AddValidatorsFromAssembly(typeof(EnrollStudentValidator).Assembly);
+
+// --- M7 Session 1 - Exercise 2: Pipeline Behaviors (Logging FIRST, Validation SECOND) ---
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+// --- M7 Session 1 - Exercise 2: Global Exception Handler ---
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 // --- M6 Session 1 - Exercise 1: Register M6 Service Layer ---
 // Scoped to match TmsDbContext lifetime — one service instance per HTTP request.
 builder.Services.AddScoped<ICourseService, CourseService>();
@@ -62,8 +100,16 @@ builder.Services.AddDbContext<TmsDbContext>(options =>
 
 var app = builder.Build();
 
+// --- M7 Session 1 - Exercise 1: V1 Deprecation Middleware ---
+// Must be registered before MapControllers so every V1 endpoint gets the headers.
+app.UseMiddleware<V1DeprecationMiddleware>();
+
 // --- Session 1 - Exercise 1B: Middleware Ordering ---
 app.UseMiddleware<RequestLoggingMiddleware>();
+
+// --- M7 Session 1 - Exercise 2: Global Exception Handler ---
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 // --- Session 3 - Exercise 6 & 7: Environment-Aware Error Handling ---
 app.UseExceptionHandler();
