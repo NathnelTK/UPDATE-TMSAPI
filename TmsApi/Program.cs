@@ -15,13 +15,20 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// --- Session 1 - Exercise 1B: Middleware Ordering ---
+// 1. RequestLoggingMiddleware is registered first as the outer wrapper
+app.UseMiddleware<RequestLoggingMiddleware>();
+
+// 2. UseExceptionHandler is registered next to catch all downstream exceptions
+app.UseExceptionHandler();
+
+// 3. UseHttpsRedirection
 app.UseHttpsRedirection();
 
-// --- Session 1 - Exercise 1: Secure Request Pipeline Ordering ---
-// Order is critical here: UseRouting, then UseAuthentication, then UseAuthorization.
+// 4. UseRouting
 app.UseRouting();
 
+// 5. UseAuthentication and UseAuthorization
 app.UseAuthentication();
 app.UseAuthorization();
 
