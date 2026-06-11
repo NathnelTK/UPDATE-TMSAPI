@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,9 @@ builder.Services.AddControllers();
 
 // --- Session 3 - Exercise 6: Standardized RFC 9457 Problem Details Service ---
 builder.Services.AddProblemDetails();
+
+// --- Session 3 - Exercise 7: Add OpenAPI document services ---
+builder.Services.AddOpenApi();
 
 // --- Session 1 - Exercise 1: Registering Authentication and Authorization Services ---
 builder.Services
@@ -37,7 +41,10 @@ var app = builder.Build();
 // --- Session 1 - Exercise 1B: Middleware Ordering ---
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// --- Session 3 - Exercise 6: UseExceptionHandler early in the pipeline ---
+// --- Session 3 - Exercise 6 & 7: Environment-Aware Error Handling ---
+// We place UseExceptionHandler early in the pipeline to catch all downstream errors.
+// By combining AddProblemDetails() with UseExceptionHandler(), stack traces are hidden from
+// external users automatically while keeping RFC 9457 JSON Problem Details returned in both environments.
 app.UseExceptionHandler();
 
 // --- Session 3 - Exercise 6: UseStatusCodePages to convert empty status code responses to Problem Details ---
@@ -49,6 +56,15 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// --- Session 3 - Exercise 7: Environment-Aware OpenAPI & Scalar Explorer ---
+// Expose OpenAPI and Scalar interactive reference ONLY in Development environment.
+// In Production, accessing /scalar/v1 will return 404.
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
 
 // --- Session 1 - Exercise 1: Secured Minimal API Endpoint ---
 app.MapGet("/api/assessments/results", () => Results.Ok(new
@@ -66,7 +82,6 @@ app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
 });
 
 // --- Session 3 - Exercise 6: Simulated Error Route ---
-// Intentionally throws a TmsDatabaseException to test RFC 9457 Problem Details formatting.
 app.MapGet("/api/error", () =>
 {
     throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
