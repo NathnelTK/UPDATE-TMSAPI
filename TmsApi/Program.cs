@@ -5,6 +5,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
+// --- Session 3 - Exercise 6: Standardized RFC 9457 Problem Details Service ---
+builder.Services.AddProblemDetails();
+
 // --- Session 1 - Exercise 1: Registering Authentication and Authorization Services ---
 builder.Services
     .AddAuthentication("Training")
@@ -17,8 +20,6 @@ builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 // --- Session 2 - Exercise 3: strongly-typed Options with Validation ---
-// We bind the "Payments" configuration section to PaymentOptions, and configure it
-// to validate data annotations and fail at startup (ValidateOnStart()) if values are invalid.
 builder.Services.AddOptions<PaymentOptions>()
     .BindConfiguration("Payments")
     .ValidateDataAnnotations()
@@ -35,7 +36,13 @@ var app = builder.Build();
 
 // --- Session 1 - Exercise 1B: Middleware Ordering ---
 app.UseMiddleware<RequestLoggingMiddleware>();
+
+// --- Session 3 - Exercise 6: UseExceptionHandler early in the pipeline ---
 app.UseExceptionHandler();
+
+// --- Session 3 - Exercise 6: UseStatusCodePages to convert empty status code responses to Problem Details ---
+app.UseStatusCodePages();
+
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
@@ -56,6 +63,13 @@ app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
 {
     worker.ProcessBatch();
     return Results.Ok("processed");
+});
+
+// --- Session 3 - Exercise 6: Simulated Error Route ---
+// Intentionally throws a TmsDatabaseException to test RFC 9457 Problem Details formatting.
+app.MapGet("/api/error", () =>
+{
+    throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
 });
 
 app.Run();
