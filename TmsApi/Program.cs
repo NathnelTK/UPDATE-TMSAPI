@@ -6,6 +6,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
+// Register simple in-memory student and course services for demo endpoints
+builder.Services.AddSingleton<IStudentService, StudentService>();
+builder.Services.AddSingleton<ICourseService, CourseService>();
+
 // --- Session 3 - Exercise 6: Standardized RFC 9457 Problem Details Service ---
 builder.Services.AddProblemDetails();
 
