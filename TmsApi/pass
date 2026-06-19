@@ -1,0 +1,11 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "TmsDatabase": "Host=db.qdmbiwlhcnmqigdntsyw.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=cfGLTbVLCiWBpYH3;Ssl Mode=Require;Trust Server Certificate=true"
+  }
+}
