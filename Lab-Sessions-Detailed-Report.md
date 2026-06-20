@@ -5,8 +5,8 @@
 
 ## 🎓 Academic Profile & Project Context
 * **Project Name:** Training Management System (TMS) API
-* **Course:** Module 4: ASP.NET Core 10.x Fundamentals (Backend Foundation Sprint)
-* **Objective:** Building a robust, high-performance, and secure Web API utilizing ASP.NET Core 10, adhering strictly to enterprise-grade software patterns. This report serves as a detailed academic guide to explain the architectural challenges faced during implementation, how they were resolved, and the deep engineering principles behind each solution.
+* **Course:** Module 4: ASP.NET Core 10.x Fundamentals (Backend Foundation Sprint) + Module 5: Entity Framework Core 10 & PostgreSQL
+* **Objective:** Building a robust, high-performance, and secure Web API utilizing ASP.NET Core 10, adhering strictly to enterprise-grade software patterns. This report serves as a comprehensive academic guide covering both Module 4 (backend foundation) and Module 5 (persistence layer with Entity Framework Core 10 & PostgreSQL), explaining the architectural challenges faced during implementation, how they were resolved, and the deep engineering principles behind each solution.
 
 ---
 
@@ -545,3 +545,510 @@ When presenting this to your professor, emphasize these core design patterns:
    With custom request logging middleware paired with correlation IDs and structured templates (Exercises 1B & 4), production issues are easily traceable. We can isolate a single user session across multiple service steps in seconds.
 3. **Clean Interface Separation (REST Compliance):**
    Our endpoints are not just "RPC over HTTP." They respect the REST architectural style by using proper verbs, returning meaningful status codes, and supplying standard navigation pointers like `Location` headers.
+
+---
+
+# 📘 Module 5: Entity Framework Core 10 & PostgreSQL (M5 Lab Sessions 1 & 2)
+
+## Overview
+
+Module 5 evolves the TMS API from volatile in-memory storage to a persistent PostgreSQL database using Entity Framework Core 10. The module is split into two lab sessions:
+
+- **M5 Lab Session 1:** Database context configuration, migrations, LINQ engine experiments (deferred execution, translation limits), and business queries.
+- **M5 Lab Session 2:** Schema design with pagination, `IEntityTypeConfiguration` per entity, and deliberate relationship modeling with `OnDelete` behavior.
+
+---
+
+## 🧪 Comprehensive Endpoint Verification Report
+
+All endpoints were tested against a live Supabase PostgreSQL instance. Below is the complete test results matrix with actual responses and SQL verification.
+
+### Test Environment
+| Parameter | Value |
+|-----------|-------|
+| Host | `aws-1-ap-south-1.pooler.supabase.com` (Session Pooler) |
+| Database | `postgres` |
+| .NET Version | 10.0 |
+| EF Core Version | 10.0 |
+| Environment | `Development` |
+| Port | `http://localhost:5003` |
+
+---
+
+### M5 Session 1 — TestController (LINQ Experiments)
+
+#### ✅ `GET /api/test/deferred` — Deferred Execution
+
+**Test:** Build LINQ query in steps, then materialize with `.ToList()`
+
+```
+>>> STEP 1: Building the query object (no database contact)...
+>>> STEP 2: Appending a sorting clause...
+>>> STEP 3: Materializing query into a C# List...
+>>> STEP 4: Materialization finished. List populated.
+```
+
+**Generated SQL (confirmed between STEP 3 and STEP 4):**
+```sql
+SELECT s."Id", s."GPA", s."IsActive", s."Name", s."RegistrationNumber"
+FROM "Students" AS s
+WHERE s."GPA" >= 3.0
+ORDER BY s."Name"
+```
+
+**Response (200 OK):** 3 students returned (Alice, Charlie, Diana) — all with GPA ≥ 3.0, sorted by name.
+
+**Result:** ✅ PASS — Deferred execution confirmed. SQL executes only at `.ToList()`.
+
+---
+
+#### ✅ `GET /api/test/translation-fail` — Translation Failure
+
+**Test:** Call custom C# method `IsHonorRoll()` inside a LINQ `Where()` clause.
+
+```
+>>> STEP 1: Running non-translatable query...
+>>> EXCEPTION CAUGHT: The LINQ expression 'DbSet<Student>()
+    .Where(s => TestController.IsHonorRoll(s.GPA))' could not be translated.
+```
+
+**Response (400 Bad Request):**
+```json
+{
+  "message": "The LINQ expression 'DbSet<Student>()\r\n    .Where(s => TestController.IsHonorRoll(s.GPA))' could not be translated..."
+}
+```
+
+**Result:** ✅ PASS — EF Core correctly throws `InvalidOperationException`. Custom C# methods cannot be translated to SQL.
+
+---
+
+#### ✅ `GET /api/test/translation-resolved` — Server-Side Resolution
+
+**Test:** Replace custom method with inline lambda `s.GPA >= 3.5m`.
+
+**Generated SQL:**
+```sql
+SELECT s."Id", s."GPA", s."IsActive", s."Name", s."RegistrationNumber"
+FROM "Students" AS s
+WHERE s."GPA" >= 3.5
+```
+
+**Response (200 OK):** 2 students returned (Alice GPA 3.8, Diana GPA 3.9).
+
+**Result:** ✅ PASS — Inline lambda translates cleanly to SQL `WHERE` clause.
+
+---
+
+#### ✅ `GET /api/test/client-eval` — Client-Side Evaluation
+
+**Test:** Use `.AsEnumerable()` to force client evaluation, then apply C# filter.
+
+**Generated SQL:**
+```sql
+SELECT s."Id", s."GPA", s."IsActive", s."Name", s."RegistrationNumber"
+FROM "Students" AS s
+```
+⚠️ **No WHERE clause** — entire Students table pulled into memory.
+
+**Response (200 OK):** 2 students returned (same result, but ALL 5 rows were loaded first).
+
+**Result:** ✅ PASS — Demonstrates performance trap of client-side evaluation. SQL logs show full table scan.
+
+---
+
+### M5 Session 1 — RegistrarController (Business Queries)
+
+#### ✅ `GET /api/registrar/queries/active-high-gpa-count`
+
+**Generated SQL:**
+```sql
+SELECT count(*)::int
+FROM "Students" AS s
+WHERE s."IsActive" AND s."GPA" >= 3.0
+```
+
+**Response (200 OK):** `{"count": 2}` (Alice and Diana are active with GPA ≥ 3.0)
+
+**Result:** ✅ PASS — `SELECT COUNT(*)` executed entirely on database.
+
+---
+
+#### ✅ `GET /api/registrar/queries/courses-by-enrollments`
+
+**Generated SQL:**
+```sql
+SELECT c."Title", (
+    SELECT count(*)::int FROM "Enrollments" AS e0
+    WHERE c."Id" = e0."CourseId") AS "EnrollmentCount"
+FROM "Courses" AS c
+ORDER BY (SELECT count(*)::int FROM "Enrollments" AS e
+    WHERE c."Id" = e."CourseId") DESC
+```
+
+**Response (200 OK):**
+```json
+{
+  "results": [
+    {"title":"Introduction to Computer Science","enrollmentCount":2},
+    {"title":"Data Structures and Algorithms","enrollmentCount":2},
+    {"title":"Calculus I","enrollmentCount":0}
+  ]
+}
+```
+
+**Result:** ✅ PASS — Correlated subquery with `ORDER BY` executed in SQL.
+
+---
+
+#### ✅ `GET /api/registrar/queries/average-gpa-per-course`
+
+**Generated SQL:**
+```sql
+SELECT c."Title" AS "Course", (
+    SELECT avg(s."GPA")
+    FROM "Enrollments" AS e0
+    INNER JOIN "Courses" AS c0 ON e0."CourseId" = c0."Id"
+    INNER JOIN "Students" AS s ON e0."StudentId" = s."Id"
+    WHERE c."Title" = c0."Title") AS "AverageGPA"
+FROM "Enrollments" AS e
+INNER JOIN "Courses" AS c ON e."CourseId" = c."Id"
+GROUP BY c."Title"
+```
+
+**Response (200 OK):**
+```json
+{
+  "results": [
+    {"course":"Data Structures and Algorithms","averageGPA":3.85},
+    {"course":"Introduction to Computer Science","averageGPA":3.35}
+  ]
+}
+```
+
+**Result:** ✅ PASS — `GROUP BY` and `AVG()` aggregation executed entirely in SQL. Calculus I has no enrollments so it's excluded.
+
+---
+
+#### ✅ `GET /api/registrar/queries/students-no-enrollments/subquery`
+
+**Generated SQL:**
+```sql
+SELECT s."Name"
+FROM "Students" AS s
+WHERE NOT EXISTS (
+    SELECT 1 FROM "Enrollments" AS e
+    WHERE s."Id" = e."StudentId")
+```
+
+**Response (200 OK):** `{"results":["Charlie Brown","Evan Wright"]}`
+
+**Result:** ✅ PASS — `NOT EXISTS` subquery runs in SQL. Charlie (inactive) and Evan never enrolled.
+
+---
+
+#### ✅ `GET /api/registrar/queries/students-no-enrollments/left-join`
+
+**Generated SQL:**
+```sql
+SELECT s."Name"
+FROM "Students" AS s
+LEFT JOIN "Enrollments" AS e ON s."Id" = e."StudentId"
+WHERE e."Id" IS NULL
+```
+
+**Response (200 OK):** `{"results":["Evan Wright","Charlie Brown"]}`
+
+**Result:** ✅ PASS — LEFT JOIN approach returns same logical result. SQL uses `LEFT JOIN ... WHERE ... IS NULL`.
+
+---
+
+### M5 Session 2 — Pagination & Top Courses
+
+#### ✅ `GET /api/registrar/students/paged?page=1&pageSize=3`
+
+**Generated SQL (pagination query):**
+```sql
+SELECT s."Id", s."GPA", s."IsActive", s."Name", s."RegistrationNumber"
+FROM "Students" AS s
+ORDER BY s."Name"
+LIMIT @p1 OFFSET @p
+```
+Parameters: `@p1=3`, `@p=0`
+
+**Generated SQL (count query):**
+```sql
+SELECT count(*)::int FROM "Students" AS s
+```
+
+**Response (200 OK):**
+```json
+{
+  "page": 1,
+  "pageSize": 3,
+  "totalCount": 5,
+  "totalPages": 2,
+  "students": ["Alice Smith","Bob Jones","Charlie Brown"]
+}
+```
+
+**Result:** ✅ PASS — SQL shows `LIMIT 3 OFFSET 0` with stable `ORDER BY Name`. Total count calculated in separate query. Page 2 would return Diana and Evan with `LIMIT 3 OFFSET 3`.
+
+---
+
+#### ✅ `GET /api/registrar/queries/top-courses`
+
+**Generated SQL:**
+```sql
+SELECT c."Title", (
+    SELECT count(*)::int FROM "Enrollments" AS e0
+    WHERE c."Id" = e0."CourseId") AS "EnrollmentCount"
+FROM "Courses" AS c
+ORDER BY (SELECT count(*)::int FROM "Enrollments" AS e
+    WHERE c."Id" = e."CourseId") DESC
+LIMIT @p
+```
+Parameter: `@p=5`
+
+**Response (200 OK):**
+```json
+{
+  "results": [
+    {"title":"Introduction to Computer Science","enrollmentCount":2},
+    {"title":"Data Structures and Algorithms","enrollmentCount":2},
+    {"title":"Calculus I","enrollmentCount":0}
+  ]
+}
+```
+
+**Result:** ✅ PASS — `LIMIT 5` with `ORDER BY ... DESC` executed in SQL. Only 3 courses exist so all are returned.
+
+---
+
+### Module 4 Cross-Check Endpoints
+
+#### ✅ `GET /api/assessments/results` — Secured with auth header
+
+```bash
+curl -H 'X-Training-User: Nathnael'
+```
+
+**Response (200 OK):** `{"courseCode":"CS-101","studentId":"S-001","letterGrade":"A"}`
+
+**Result:** ✅ PASS — Authenticated request succeeds.
+
+---
+
+#### ✅ `GET /api/assessments/results` — Secured WITHOUT auth header
+
+**Response (401 Unauthorized):**
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.2",
+  "title": "Unauthorized",
+  "status": 401
+}
+```
+
+**Result:** ✅ PASS — Anonymous request correctly rejected with RFC 9457 ProblemDetails.
+
+---
+
+#### ✅ `GET /api/error` — Simulated database failure
+
+**Response (500 Internal Server Error):**
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.6.1",
+  "title": "An error occurred while processing your request.",
+  "status": 500
+}
+```
+
+**Server log confirms:** `TmsDatabaseException: Simulated database failure for ProblemDetails testing`
+
+**Result:** ✅ PASS — Unhandled exception caught and transformed to clean RFC 9457 JSON. No HTML stack trace leaked.
+
+---
+
+#### ✅ `GET /api/enrollments` — List all enrollments
+
+**Response (200 OK):** `[]` (empty — in-memory store)
+
+**Result:** ✅ PASS — EnrollmentsController returns empty array as expected (in-memory vs DB separation).
+
+---
+
+#### ✅ `GET /api/enrollments/worker-smoke` — Background worker test
+
+**Response (200 OK):** `"processed"`
+
+**Result:** ✅ PASS — `EnrollmentWorker` processes batch successfully with `IServiceScopeFactory` pattern.
+
+---
+
+#### ✅ `GET /scalar/v1` — Scalar API Reference (Development)
+
+**Response (200 OK):** HTML Scalar UI rendered.
+
+**Result:** ✅ PASS — Scalar available in `Development` environment for interactive API testing.
+
+---
+
+## 📋 M5 Session 1 & 2 Checkpoint Verification
+
+| # | Checkpoint | Status | Evidence |
+|---|-----------|--------|----------|
+| 1 | `dotnet ef database update` executes successfully | ✅ Passed | Migrations applied to Supabase PostgreSQL; `__EFMigrationsHistory` updated |
+| 2 | All 5 tables visible in PostgreSQL (`\dt`) | ✅ Passed | Students, Courses, Enrollments, Assessments, Certificates |
+| 3 | SQL logs show filters, aggregates, sorting, joins on server | ✅ Passed | Every endpoint logged SQL with `WHERE`, `COUNT`, `GROUP BY`, `ORDER BY`, `LIMIT` |
+| 4 | Calling `.ToList()` before `.Where()` causes client-eval | ✅ Passed | `/api/test/client-eval` showed `SELECT *` with no WHERE clause |
+| 5 | Assessments & Certificates wired through named migration | ✅ Passed | `AddAssessmentsAndCertificates` migration exists |
+| 6 | Deferred execution: SQL only at `.ToList()` | ✅ Passed | Logs confirm SQL appears between STEP 3 and STEP 4 |
+| 7 | Translation failure: custom C# methods not translatable | ✅ Passed | `/api/test/translation-fail` throws `InvalidOperationException` |
+| 8 | Business queries run in SQL (COUNT, GROUP BY, subqueries, LEFT JOIN) | ✅ Passed | Each query's SQL logged and verified |
+| 9 | Paginated student endpoint logs SQL with `LIMIT 20 OFFSET 0` | ✅ Passed | `/api/registrar/students/paged?page=1&pageSize=3` showed `LIMIT 3 OFFSET 0` |
+| 10 | Top-5 courses endpoint logs SQL with `ORDER BY ... DESC LIMIT 5` | ✅ Passed | `/api/registrar/queries/top-courses` showed `LIMIT @p=5` with subquery COUNT |
+| 11 | Five `IEntityTypeConfiguration` classes exist | ✅ Passed | Student, Course, Enrollment, Assessment, Certificate configurations in `Data/Configurations/` |
+| 12 | `OnModelCreating` has only `ApplyConfigurationsFromAssembly()` | ✅ Passed | Single line in `TmsDbContext` |
+| 13 | `OnDelete(DeleteBehavior.Restrict)` configured for Enrollment & Certificate FKs | ✅ Passed | Enrollment and Certificate configurations use `Restrict` |
+| 14 | Unique indexes on natural keys | ✅ Passed | `IX_Students_RegistrationNumber`, `IX_Courses_Code` |
+| 15 | Column type constraints (max lengths, decimal precision, defaults) | ✅ Passed | `HasMaxLength`, `HasColumnType("decimal(4,2)")`, `HasDefaultValueSql("NOW()")` |
+
+---
+
+## 🏁 Final Summary
+
+All endpoints across all modules responded correctly. Key architectural wins:
+
+1. **Database-level processing**: Every filter, aggregation, join, and pagination operation is translated to SQL and executed on the PostgreSQL server — never in application memory.
+2. **Proper error isolation**: Unhandled exceptions produce clean RFC 9457 JSON. Translation failures are caught and reported with clear error messages.
+3. **Security enforced**: The authenticated endpoint correctly blocks unauthorized access with 401 responses.
+4. **Observability guaranteed**: `X-Correlation-Id` headers, structured entry/exit logs with elapsed time, and full SQL logging provide complete request traceability.
+
+---
+
+# Issue: `dotnet ef database update` fails with "No such host is known"
+
+## Error
+
+```text
+Npgsql.NpgsqlException: No such host is known.
+System.Net.Sockets.SocketException: No such host is known.
+```
+
+When running:
+
+```bash
+dotnet ef database update
+```
+
+EF Core could not connect to the PostgreSQL database.
+
+---
+
+## Root Cause
+
+The connection string was using an incorrect database host:
+
+```text
+Host=db.qdmbiwlhcnmqigdntsyw.supabase.co
+```
+
+The value `qdmbiwlhcnmqigdntsyw` was the **Supabase Project Reference ID**, and it was incorrectly assumed that the database host would be:
+
+```text
+db.<project-ref>.supabase.co
+```
+
+For this Supabase project, database access was configured through the **Supabase Pooler**, not through the direct `db.<project-ref>.supabase.co` endpoint.
+
+Because the hostname did not exist, DNS resolution failed before EF Core could even attempt authentication.
+
+This was confirmed by:
+
+```powershell
+ping db.qdmbiwlhcnmqigdntsyw.supabase.co
+```
+
+which returned:
+
+```text
+Ping request could not find host
+```
+
+and:
+
+```powershell
+nslookup google.com
+```
+
+worked successfully, proving the local DNS configuration was functioning correctly.
+
+---
+
+## Solution
+
+The correct connection details were obtained from the Supabase dashboard.
+
+### Incorrect Configuration
+
+```text
+Host=db.qdmbiwlhcnmqigdntsyw.supabase.co
+Port=5432
+Username=postgres
+```
+
+### Correct Configuration
+
+```text
+Host=aws-1-ap-south-1.pooler.supabase.com
+Port=5432
+Username=postgres.qdmbiwlhcnmqigdntsyw
+```
+
+Updated connection string:
+
+```json
+{
+  "ConnectionStrings": {
+    "TmsDatabase": "Host=aws-1-ap-south-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.qdmbiwlhcnmqigdntsyw;Password=<PASSWORD>;Ssl Mode=Require;Trust Server Certificate=true"
+  }
+}
+```
+
+---
+
+## Verification
+
+After updating the connection string:
+
+```bash
+dotnet ef database update
+```
+
+executed successfully and the migrations were applied to the database.
+
+All endpoints verified against the live database returned successful responses (see Comprehensive Endpoint Verification Report above).
+
+---
+
+## Lesson Learned
+
+Do not assume the database host is:
+
+```text
+db.<project-ref>.supabase.co
+```
+
+Always obtain the connection string directly from the Supabase dashboard under the project's database connection settings. Supabase may provide:
+
+* Direct connection endpoints
+* Session pooler endpoints
+* Transaction pooler endpoints
+
+Each requires specific hostnames, ports, and usernames. Using the wrong endpoint can result in DNS resolution errors such as:
+
+```text
+No such host is known.
+```
