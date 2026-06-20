@@ -94,4 +94,74 @@ public class RegistrarController(TmsDbContext context) : ControllerBase
 
         return Ok(new { Description = "Students with zero enrollments (LEFT JOIN ... IS NULL)", Results = list });
     }
+
+    // ========================================================================
+    // Session 2 - Exercise 3: GroupBy, aggregates, and pagination
+    // ========================================================================
+
+    /// <summary>
+    /// TODO 1: Paged list of students.
+    /// Implements stable pagination with OrderBy before Skip/Take.
+    /// SQL: SELECT ... FROM "Students" ORDER BY "Name" LIMIT @pageSize OFFSET @offset
+    /// </summary>
+    [HttpGet("students/paged")]
+    public async Task<IActionResult> GetPagedStudents(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        // Validate pagination parameters
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100; // Cap page size to prevent abuse
+
+        // Always OrderBy before Skip/Take for stable sorting
+        var students = await context.Students
+            .OrderBy(s => s.Name)                          // Stable sort required before Skip/Take
+            .Skip((page - 1) * pageSize)                   // Offset: skip previous pages
+            .Take(pageSize)                                // Limit: take only the requested page size
+            .ToListAsync(cancellationToken);               // Materialize with cancellation support
+
+        // Also get total count for client-side pagination UI
+        var totalCount = await context.Students
+            .CountAsync(cancellationToken);
+
+        return Ok(new
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+            Students = students
+        });
+    }
+
+    /// <summary>
+    /// TODO 2: Top 5 courses by enrollment count.
+    /// SQL: SELECT c."Title", COUNT(e."Id") FROM "Courses" c
+    ///      LEFT JOIN "Enrollments" e ON c."Id" = e."CourseId"
+    ///      GROUP BY c."Id", c."Title"
+    ///      ORDER BY COUNT(e."Id") DESC
+    ///      LIMIT 5
+    /// </summary>
+    [HttpGet("queries/top-courses")]
+    public async Task<IActionResult> TopCoursesByEnrollment(
+        CancellationToken cancellationToken = default)
+    {
+        var topCourses = await context.Courses
+            .Select(c => new
+            {
+                c.Title,
+                EnrollmentCount = c.Enrollments.Count   // EF translates this to SQL COUNT
+            })
+            .OrderByDescending(x => x.EnrollmentCount)  // Sort by count descending
+            .Take(5)                                     // Only top 5
+            .ToListAsync(cancellationToken);
+
+        return Ok(new
+        {
+            Description = "Top 5 courses by enrollment count",
+            Results = topCourses
+        });
+    }
 }
