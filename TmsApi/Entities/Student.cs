@@ -8,6 +8,7 @@ public class Student
     public decimal GPA { get; set; }
     public bool IsActive { get; set; } = true;
 
-    // Navigation property for many-to-many relationship
+    // Navigation properties for relationships
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+    public ICollection<Certificate> Certificates { get; set; } = new List<Certificate>();
 }
