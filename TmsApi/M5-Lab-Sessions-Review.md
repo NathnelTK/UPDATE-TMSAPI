@@ -1,8 +1,8 @@
 # M5 Lab Sessions — Comprehensive Implementation Review
 
 **Module:** M5 — Entity Framework Core 10 and PostgreSQL  
-**Sessions:** 1 (Exercises 1 & 2) and 2 (Exercises 3, 4, & 5)  
-**Branch:** `session2-exercises`  
+**Sessions:** 1 (Exercises 1 & 2), 2 (Exercises 3, 4, & 5), and 3 (Exercises 6, 7, 8, & 9)  
+**Branch:** `session3-exercises`  
 **Repository:** `https://github.com/NathnelTK/UPDATE-TMSAPI`
 
 ---
@@ -1041,6 +1041,18 @@ migrationBuilder.AddForeignKey(
 | Top-5 courses endpoint logs SQL with `GROUP BY` and `ORDER BY ... DESC LIMIT 5` | ✅ | `/api/registrar/queries/top-courses` verified |
 | `OnDelete(DeleteBehavior.Restrict)` is set and justified | ✅ | Comment explains: "prevent deleting a student/course who has enrollments" |
 
+### Session 3 Checkpoint ✅
+
+| Requirement | Status | Evidence |
+|-------------|--------|----------|
+| At least two migration files exist; can explain Up() and Down() for the latest | ✅ | 4 migrations: InitialCreate, AddAssessmentsAndCertificates, RefineTmsModel, AddSession3Fields |
+| N+1 demonstration (Part A) produces 1 + N SQL statements in the log | ✅ | `/api/registrar/n-plus-one/before` — loops queries per student |
+| N+1 fix (Part B) produces 1 query (or 1 + 1 subquery) in the log | ✅ | `/api/registrar/n-plus-one/after` — projection with Select translates to SQL subquery |
+| LastUpdated shadow column exists on Students (verified in pgAdmin/SQL) | ✅ | `AddSession3Fields` migration adds `LastUpdated` with `timestamp with time zone` |
+| Row-version concurrency test produces DbUpdateConcurrencyException | ✅ | `/api/registrar/students/{id}/update-gpa` uses xmin via `IsRowVersion()` |
+| ExecuteUpdateAsync for bulk archive logs a single SQL UPDATE statement | ✅ | `/api/registrar/enrollments/archive-old` — single `UPDATE "Enrollments" SET "IsArchived" = true` |
+| HasQueryFilter hides soft-deleted students from normal queries | ✅ | `/api/registrar/students/active-list` automatically excludes IsDeleted = true |
+| IgnoreQueryFilters() brings soft-deleted students back for admin queries | ✅ | `/api/registrar/students/all-including-deleted` bypasses filter |
 ---
 
 ## Appendix: Verified SQL Outputs
@@ -1150,7 +1162,17 @@ LIMIT 5
 | GET | `/api/assessments/results` | S1-E1 | Secured sample (requires auth) |
 | GET | `/api/enrollments/worker-smoke` | S2-E2 | Background worker test |
 | GET | `/api/error` | S3-E6 | Simulated error for ProblemDetails |
+| GET | `/api/registrar/n-plus-one/before` | S3-E7 | N+1 demo: 1+N SQL statements per student |
+| GET | `/api/registrar/n-plus-one/after` | S3-E7 | N+1 fix: single query with projection subquery |
+| GET | `/api/registrar/n-plus-one/include` | S3-E7 | N+1 alternative fix using eager Include |
+| GET | `/api/registrar/students/{id}` | S3-E8 | Get student by ID (concurrency test) |
+| PUT | `/api/registrar/students/{id}/update-gpa` | S3-E8 | Update GPA with concurrency token check |
+| POST | `/api/registrar/enrollments/archive-old` | S3-E9 | Bulk archive old enrollments via ExecuteUpdateAsync |
+| POST | `/api/registrar/students/{id}/soft-delete` | S3-E9 | Soft-delete student (sets IsDeleted) |
+| GET | `/api/registrar/students/active-list` | S3-E9 | Active students (soft-deleted excluded by HasQueryFilter) |
+| GET | `/api/registrar/students/all-including-deleted` | S3-E9 | All students including soft-deleted (admin override) |
+| POST | `/api/registrar/students/{id}/restore` | S3-E9 | Restore a soft-deleted student |
 
 ---
 
-*Generated on: 2026-06-21 | Branch: `session2-exercises` | Repo: `github.com/NathnelTK/UPDATE-TMSAPI`*
+*Generated on: 2026-06-23 | Branch: `session3-exercises` | Repo: `github.com/NathnelTK/UPDATE-TMSAPI`*
