@@ -7,6 +7,10 @@ public class Student
     public required string Name { get; set; }
     public decimal GPA { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsDeleted { get; set; } = false; // Soft-delete flag for Exercise 9
+
+    // Row version for concurrency (Exercise 8) — mapped to PostgreSQL xmin by Npgsql
+    public uint Version { get; set; }
 
     // Navigation properties for relationships
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();

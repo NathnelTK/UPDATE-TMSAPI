@@ -23,6 +23,9 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .HasDefaultValueSql("NOW()")           // Database-level default for enrollment timestamp
             .IsRequired();
 
+        builder.Property(e => e.IsArchived)
+            .HasDefaultValue(false);               // Default: not archived
+
         // --- Foreign Key: Enrollment -> Student (many-to-one) ---
         builder.HasOne(e => e.Student)             // Each enrollment belongs to one student
             .WithMany(s => s.Enrollments)          // A student has many enrollments

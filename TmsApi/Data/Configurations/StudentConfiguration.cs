@@ -30,6 +30,22 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
         builder.Property(s => s.IsActive)
             .HasDefaultValue(true);                // Default value for active status
 
+        builder.Property(s => s.IsDeleted)
+            .HasDefaultValue(false);               // Default: not deleted
+
+        // --- Row Version / Concurrency Token (Exercise 8) ---
+        // Npgsql maps IsRowVersion() to PostgreSQL's built-in xmin system column
+        builder.Property(s => s.Version)
+            .IsRowVersion();
+
+        // --- Shadow Property: LastUpdated audit stamp (Exercise 8) ---
+        builder.Property<DateTime>("LastUpdated")
+            .HasDefaultValueSql("NOW()");          // Database-level default
+
+        // --- Soft-Delete Query Filter (Exercise 9) ---
+        // Automatically excludes soft-deleted students from normal queries
+        builder.HasQueryFilter(s => !s.IsDeleted);
+
         // --- Unique Index on Natural Key ---
         builder.HasIndex(s => s.RegistrationNumber)
             .IsUnique()                            // Ensure no duplicate registration numbers
