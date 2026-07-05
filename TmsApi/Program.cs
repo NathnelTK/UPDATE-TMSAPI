@@ -3,11 +3,20 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using TmsApi.Data;
 using TmsApi.Entities;
+using TmsApi.Filters;
+using TmsApi.Legacy;
+using TmsApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // --- M6 Session 2 - Exercise 4: Global Audit Log Filter ---
+    // Cross-cutting concern: logs every API call and its status code.
+    // Registered globally so every controller action is covered automatically.
+    options.Filters.Add<AuditLogFilter>();
+});
 
 // --- Session 3 - Exercise 6: Standardized RFC 9457 Problem Details Service ---
 builder.Services.AddProblemDetails();
@@ -24,6 +33,11 @@ builder.Services.AddAuthorization();
 
 // --- Session 2 - Exercise 2: Dependency Injection Registrations ---
 builder.Services.AddSingleton<EnrollmentWorker>();
+builder.Services.AddScoped<ILegacyEnrollmentService, LegacyEnrollmentService>();
+
+// --- M6 Session 1 - Exercise 1: Register M6 Service Layer ---
+// Scoped to match TmsDbContext lifetime — one service instance per HTTP request.
+builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 
 // --- Session 2 - Exercise 3: strongly-typed Options with Validation ---
@@ -109,9 +123,9 @@ using (var scope = app.Services.CreateScope())
 
         var courses = new List<Course>
         {
-            new() { Code = "CS-101", Title = "Introduction to Computer Science", Capacity = 30 },
-            new() { Code = "CS-201", Title = "Data Structures and Algorithms", Capacity = 25 },
-            new() { Code = "MAT-101", Title = "Calculus I", Capacity = 40 }
+            new() { Code = "CS-101", Title = "Introduction to Computer Science", MaxCapacity = 30 },
+            new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
+            new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
         };
         context.Courses.AddRange(courses);
 
@@ -127,6 +141,16 @@ using (var scope = app.Services.CreateScope())
         context.Enrollments.AddRange(enrollments);
         context.SaveChanges();
     }
+}
+
+// --- M6 Session 2 - Before You Begin: Deterministic Course Seeder ---
+// Seeds 25 courses for pagination verification (Development only).
+// Idempotent — skips if courses already exist.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+    await DataSeeder.SeedAsync(context);
 }
 
 app.Run();

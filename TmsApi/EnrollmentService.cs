@@ -1,11 +1,17 @@
 // --- Session 2 - Exercise 4: Structured Logging with Custom Levels ---
-// We audit and apply structured logging guidelines to EnrollmentService.
+// We audit and apply structured logging guidelines to LegacyEnrollmentService.
 // Guidelines:
 // - Use structured logging placeholders {Placeholder} instead of string concatenation.
 // - Use LogInformation for successful business operations (Enroll, Delete success).
 // - Use LogWarning for unexpected but recoverable events (Duplicate enrollment, record not found).
+//
+// NOTE: This is the M4 in-memory proof-of-life service.
+// M6 replaces this with a database-backed EnrollmentService in TmsApi.Services namespace.
+// The "Legacy" prefix avoids naming conflicts with the new one.
 
-public interface IEnrollmentService
+namespace TmsApi.Legacy;
+
+public interface ILegacyEnrollmentService
 {
     Task<EnrollmentRecord> EnrollAsync(string studentId, string courseCode);
     Task<EnrollmentRecord?> GetByIdAsync(string id);
@@ -13,12 +19,12 @@ public interface IEnrollmentService
     Task<bool> DeleteAsync(string id);
 }
 
-public class EnrollmentService : IEnrollmentService
+public class LegacyEnrollmentService : ILegacyEnrollmentService
 {
     private readonly Dictionary<string, EnrollmentRecord> _store = new();
-    private readonly ILogger<EnrollmentService> _logger;
+    private readonly ILogger<LegacyEnrollmentService> _logger;
 
-    public EnrollmentService(ILogger<EnrollmentService> logger)
+    public LegacyEnrollmentService(ILogger<LegacyEnrollmentService> logger)
     {
         _logger = logger;
     }

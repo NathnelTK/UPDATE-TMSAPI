@@ -24,7 +24,7 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
             .IsRequired()                          // NOT NULL
             .HasMaxLength(200);                    // Max length for course title
 
-        builder.Property(c => c.Capacity)
+        builder.Property(c => c.MaxCapacity)
             .IsRequired();                         // NOT NULL
 
         // --- Unique Index on Natural Key ---
