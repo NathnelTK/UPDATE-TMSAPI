@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Module 6 Lab Presentation</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f7f9fc; color: #172033; }
+    .slide { min-height: 100vh; padding: 56px 72px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid #d9e2f0; }
+    h1 { font-size: 32px; margin-bottom: 14px; }
+    h2 { font-size: 24px; margin-bottom: 10px; }
+    p, li { font-size: 18px; line-height: 1.45; }
+    .bold { font-weight: 700; }
+    .highlight { background: #eaf2ff; padding: 6px 10px; border-radius: 6px; display: inline-block; }
+    ul { margin-top: 8px; }
+    .footer { margin-top: 24px; color: #50607a; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <section class="slide">
+    <h1>Module 6 Lab Session 1 &amp; 2</h1>
+    <p class="highlight">Comparison of the lab PDFs, repository implementation, and observed runtime outputs</p>
+    <p class="footer">Prepared from the available repository and PR materials</p>
+  </section>
+
+  <section class="slide">
+    <h2>What the lab PDFs requested</h2>
+    <ul>
+      <li>Build a REST contract for Course and Enrollment resources</li>
+      <li>Use DTOs and validation instead of returning EF entities directly</li>
+      <li>Return 400 and 409 responses for validation and business-rule errors</li>
+      <li>Add pagination, filtering, sorting, and audit behavior</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>What the repository currently implements</h2>
+    <ul>
+      <li>Custom authentication with a training header</li>
+      <li>Request logging middleware with correlation IDs</li>
+      <li>A secured assessments endpoint</li>
+      <li>An enrollment service with structured logging</li>
+      <li>An enrollment worker that resolves scoped services safely</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Verified runtime results</h2>
+    <ul>
+      <li><span class="bold">Build:</span> dotnet build succeeded</li>
+      <li><span class="bold">Unauthorized:</span> 401 Unauthorized from /api/assessments/results</li>
+      <li><span class="bold">Authorized:</span> 200 OK with the training header</li>
+      <li><span class="bold">Worker:</span> 200 OK from /api/enrollments/worker-smoke</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Conclusion</h2>
+    <p>The repository shows the architectural patterns taught by the labs, but it does not yet fully match the full Course/Enrollment contract described in the Module 6 PDFs.</p>
+    <p class="footer">This presentation is ready to open in any web browser.</p>
+  </section>
+</body>
+</html>
