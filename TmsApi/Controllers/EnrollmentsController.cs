@@ -17,6 +17,22 @@ public class EnrollmentsController(
     IEnrollmentService enrollmentService) : ControllerBase
 {
     /// <summary>
+    /// GET /api/courses/{courseId}/enrollments — list all enrollments for a course.
+    /// Returns 404 if the parent course does not exist.
+    /// </summary>
+    [HttpGet(Name = "ListCourseEnrollments")]
+    public async Task<IActionResult> GetEnrollments(int courseId, CancellationToken ct)
+    {
+        // Confirm the parent course exists — 404 if not
+        var course = await courseService.GetByIdAsync(courseId, ct);
+        if (course is null)
+            return NotFound();
+
+        var enrollments = await enrollmentService.GetByCourseAsync(courseId, ct);
+        return Ok(enrollments);
+    }
+
+    /// <summary>
     /// GET /api/courses/{courseId}/enrollments/{id} — single enrollment.
     /// Returns 404 if not found.
     /// </summary>
