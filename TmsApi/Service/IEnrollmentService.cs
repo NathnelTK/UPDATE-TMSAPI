@@ -15,6 +15,12 @@ public interface IEnrollmentService
     Task<EnrollmentResponseDto?> GetByIdAsync(int courseId, int id, CancellationToken ct);
 
     /// <summary>
+    /// Get all enrollments for a specific course.
+    /// Returns an empty list if no enrollments exist or the course does not exist.
+    /// </summary>
+    Task<List<EnrollmentResponseDto>> GetByCourseAsync(int courseId, CancellationToken ct);
+
+    /// <summary>
     /// Create a new enrollment for a student in a course.
     /// Business rule checks (course exists, capacity not full) are expected
     /// to be handled by the controller before calling this.

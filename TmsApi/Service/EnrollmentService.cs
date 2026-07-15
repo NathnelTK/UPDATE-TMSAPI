@@ -24,6 +24,17 @@ public class EnrollmentService(TmsDbContext context, ILogger<EnrollmentService> 
             .FirstOrDefaultAsync(ct);
 
     /// <summary>
+    /// Get all enrollments for a specific course.
+    /// Returns an empty list if no enrollments exist or the course does not exist.
+    /// </summary>
+    public async Task<List<EnrollmentResponseDto>> GetByCourseAsync(int courseId, CancellationToken ct) =>
+        await context.Enrollments
+            .AsNoTracking()
+            .Where(e => e.CourseId == courseId)
+            .Select(e => new EnrollmentResponseDto(e.Id, e.CourseId, e.StudentId, e.EnrolledAt))
+            .ToListAsync(ct);
+
+    /// <summary>
     /// Create a new enrollment for a student in a course.
     /// Business rule checks (course exists, capacity not full) are expected
     /// to be handled by the controller before calling this.

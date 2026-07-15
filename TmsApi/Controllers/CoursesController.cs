@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using TmsApi.Dtos;
 using TmsApi.Services;
 
@@ -10,15 +12,24 @@ namespace TmsApi.Controllers;
 /// All methods return DTOs — never EF entities.
 /// Business rule errors return 409 Conflict with ProblemDetails body.
 /// </summary>
+
 [ApiController]
 [Route("api/courses")]
-public class CoursesController(ICourseService courseService) : ControllerBase
+[Tags("Courses")]
+[Produces("application/json")]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+public class CoursesController(
+    ICourseService courseService,
+    LinkGenerator linkGenerator) : ControllerBase
 {
     /// <summary>
     /// GET /api/courses — paginated, filterable, sortable list of courses.
     /// Query parameters: page, pageSize, search, orderBy, descending.
     /// </summary>
     [HttpGet]
+    [ProducesResponseType(typeof(PagedResponse<CourseResponseDto>), StatusCodes.Status200OK)]
+    [EndpointSummary("List courses with pagination")]
+    [EndpointDescription("Returns a paginated, optionally filtered list of TMS courses. PageSize is capped at 50.")]
     public async Task<IActionResult> GetCourses(
         [FromQuery] PagedRequest request,
         CancellationToken ct)
@@ -28,14 +39,62 @@ public class CoursesController(ICourseService courseService) : ControllerBase
     }
 
     /// <summary>
-    /// GET /api/courses/{id} — single course by ID with enrollment count.
+    /// GET /api/courses/{id} — single course with HATEOAS links.
+    /// Returns CourseDetailDto including self, update, delete, enrollments links,
+    /// and a conditional enroll link (only when course has capacity).
     /// Returns 404 if not found.
     /// </summary>
     [HttpGet("{id:int}", Name = nameof(GetCourseById))]
+    [ProducesResponseType(typeof(CourseDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [EndpointSummary("Get a course by ID")]
+    [EndpointDescription("Returns course details with HATEOAS links. Returns 404 if the course does not exist.")]
     public async Task<IActionResult> GetCourseById(int id, CancellationToken ct)
     {
         var course = await courseService.GetByIdAsync(id, ct);
-        return course is not null ? Ok(course) : NotFound();
+        if (course is null) return NotFound();
+
+        // Build HATEOAS links using LinkGenerator — never string interpolation
+        var links = new List<LinkDto>
+        {
+            new(
+                Href: linkGenerator.GetPathByName(HttpContext, nameof(GetCourseById), new { id })!,
+                Rel: "self",
+                Method: "GET"),
+            new(
+                Href: linkGenerator.GetPathByName(HttpContext, nameof(GetCourseById), new { id })!,
+                Rel: "update",
+                Method: "PUT"),
+            new(
+                Href: linkGenerator.GetPathByName(HttpContext, nameof(GetCourseById), new { id })!,
+                Rel: "delete",
+                Method: "DELETE"),
+            new(
+                Href: linkGenerator.GetPathByAction(HttpContext, action: nameof(EnrollmentsController.GetEnrollments), controller: "Enrollments", values: new { courseId = id })!,
+                Rel: "enrollments",
+                Method: "GET")
+        };
+
+        // Conditional link — only show Enrol button when the course has capacity
+        if (course.EnrollmentCount < course.MaxCapacity)
+        {
+            links.Add(new(
+                Href: linkGenerator.GetPathByAction(HttpContext, action: nameof(EnrollmentsController.GetEnrollments), controller: "Enrollments", values: new { courseId = id })!,
+                Rel: "enroll",
+                Method: "POST"));
+        }
+
+        var detail = new CourseDetailDto
+        {
+            Id = course.Id,
+            Code = course.Code,
+            Title = course.Title,
+            MaxCapacity = course.MaxCapacity,
+            EnrollmentCount = course.EnrollmentCount,
+            Links = links.AsReadOnly()
+        };
+
+        return Ok(detail);
     }
 
     /// <summary>
@@ -45,6 +104,11 @@ public class CoursesController(ICourseService courseService) : ControllerBase
     /// Returns 400 Bad Request with ValidationProblemDetails if input is invalid.
     /// </summary>
     [HttpPost]
+    [ProducesResponseType(typeof(CourseResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [EndpointSummary("Create a new course")]
+    [EndpointDescription("Creates a course with a unique code. Returns 409 if the course code already exists.")]
     public async Task<IActionResult> CreateCourse(
         CreateCourseRequest request,
         CancellationToken ct)
