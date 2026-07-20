@@ -1,12 +1,12 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TmsApi.Data;
+using TmsApi.Infrastructure.Persistence;
 
 namespace TmsApi.Api.Controllers.V1;
 
 /// <summary>
-/// V1 Courses controller GÇö frozen contract for existing clients.
+/// V1 Courses controller Gï¿½ï¿½ frozen contract for existing clients.
 /// Returns the original TMS API contract: items + paging metadata at root.
 /// No field renames, no new required fields, no removed fields.
 /// Marked deprecated via V1DeprecationMiddleware.
@@ -17,7 +17,7 @@ namespace TmsApi.Api.Controllers.V1;
 public class CoursesController(TmsDbContext context) : ControllerBase
 {
     /// <summary>
-    /// GET /api/v1/courses GÇö paginated list of courses.
+    /// GET /api/v1/courses Gï¿½ï¿½ paginated list of courses.
     /// Returns the original TMS API contract shape.
     /// </summary>
     [HttpGet]

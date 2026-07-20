@@ -1,16 +1,17 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TmsApi.Data;
-using TmsApi.Dtos;
-using TmsApi.Entities;
+using Microsoft.Extensions.Logging;
+using TmsApi.Infrastructure.Persistence;
+using TmsApi.Application.DTOs;
+using TmsApi.Domain.Entities;
 
 namespace TmsApi.Api.Controllers.V1;
 
 /// <summary>
-/// V1 Enrollments controller GÇö frozen contract.
+/// V1 Enrollments controller Gï¿½ï¿½ frozen contract.
 /// Keeps the nested POST /api/v1/courses/{courseId}/enrollments pattern.
-/// Business rules: 404 before 409 GÇö if course doesn't exist, return 404.
+/// Business rules: 404 before 409 Gï¿½ï¿½ if course doesn't exist, return 404.
 /// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/courses/{courseId:int}/enrollments")]
@@ -18,7 +19,7 @@ namespace TmsApi.Api.Controllers.V1;
 public class EnrollmentsController(TmsDbContext context, ILogger<EnrollmentsController> logger) : ControllerBase
 {
     /// <summary>
-    /// POST /api/v1/courses/{courseId}/enrollments GÇö enroll a student.
+    /// POST /api/v1/courses/{courseId}/enrollments Gï¿½ï¿½ enroll a student.
     /// Business rule checks in order: course exists (404), capacity (409), create (201).
     /// </summary>
     [HttpPost]

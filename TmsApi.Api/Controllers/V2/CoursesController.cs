@@ -1,12 +1,12 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using TmsApi.Data;
+using TmsApi.Infrastructure.Persistence;
 
 namespace TmsApi.Api.Controllers.V2;
 
 /// <summary>
-/// V2 Courses controller GÇö returns the wrapped envelope format.
+/// V2 Courses controller Gï¿½ï¿½ returns the wrapped envelope format.
 /// Response shape: { data, meta, links }
 /// This is the Module 7 spine format that the Angular team will use going forward.
 /// </summary>
@@ -16,7 +16,7 @@ namespace TmsApi.Api.Controllers.V2;
 public class CoursesController(TmsDbContext context) : ControllerBase
 {
     /// <summary>
-    /// GET /api/v2/courses GÇö paginated list with data/meta/links envelope.
+    /// GET /api/v2/courses Gï¿½ï¿½ paginated list with data/meta/links envelope.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetCourses(

@@ -2,13 +2,14 @@ using MediatR;
 using TmsApi.Application.Common;
 using TmsApi.Infrastructure.Persistence;
 using TmsApi.Domain.Entities;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace TmsApi.Enrollments.Commands;
 
 /// <summary>
 /// Handles EnrollStudentCommand with typed Result<T,E>.
-/// Every domain failure is an early return GÇö no exceptions for expected business outcomes.
+/// Every domain failure is an early return Gï¿½ï¿½ no exceptions for expected business outcomes.
 /// </summary>
 public class EnrollStudentHandler(
     TmsDbContext context,
@@ -18,7 +19,7 @@ public class EnrollStudentHandler(
     public async Task<Result<EnrollmentCreated, EnrollmentError>> Handle(
         EnrollStudentCommand command, CancellationToken ct)
     {
-        // Step 1: Find course by code GÇö 404 if not found
+        // Step 1: Find course by code Gï¿½ï¿½ 404 if not found
         var course = await context.Courses
             .AsNoTracking()
             .Include(c => c.Enrollments)
@@ -28,12 +29,12 @@ public class EnrollStudentHandler(
             return Result<EnrollmentCreated, EnrollmentError>.Failure(
                 EnrollmentError.CourseNotFound(command.CourseCode));
 
-        // Step 2: Check capacity GÇö 409 if full
+        // Step 2: Check capacity Gï¿½ï¿½ 409 if full
         if (course.Enrollments.Count >= course.MaxCapacity)
             return Result<EnrollmentCreated, EnrollmentError>.Failure(
                 EnrollmentError.CourseFull(course.Title, course.MaxCapacity));
 
-        // Step 3: Check for duplicate enrollment GÇö 409 if already enrolled
+        // Step 3: Check for duplicate enrollment Gï¿½ï¿½ 409 if already enrolled
         if (await context.Enrollments
                 .AnyAsync(e => e.StudentId == command.StudentId && e.CourseId == course.Id, ct))
             return Result<EnrollmentCreated, EnrollmentError>.Failure(
