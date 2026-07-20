@@ -1,10 +1,18 @@
+using Asp.Versioning;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using TmsApi.Behaviors;
 using TmsApi.Data;
 using TmsApi.Entities;
+using TmsApi.Enrollments.Commands;
+using TmsApi.Enrollments.Queries;
+using TmsApi.ExceptionHandlers;
 using TmsApi.Filters;
 using TmsApi.Legacy;
+using TmsApi.Middleware;
 using TmsApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,7 +26,34 @@ builder.Services.AddControllers(options =>
     options.Filters.Add<AuditLogFilter>();
 });
 
-// --- Session 3 - Exercise 6: Standardized RFC 9457 Problem Details Service ---
+// --- M7 Session 1 - Exercise 1: API Versioning ---
+builder.Services
+    .AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    })
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
+
+// --- M7 Session 1 - Exercise 2: MediatR with CQRS ---
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));
+
+// --- M7 Session 1 - Exercise 2: FluentValidation ---
+builder.Services.AddValidatorsFromAssembly(typeof(EnrollStudentValidator).Assembly);
+
+// --- M7 Session 1 - Exercise 2: Pipeline Behaviors (Logging FIRST, Validation SECOND) ---
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+// --- M7 Session 1 - Exercise 2: Global Exception Handler ---
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // --- Session 3 - Exercise 7: Add OpenAPI document services ---
@@ -61,10 +96,14 @@ builder.Services.AddDbContext<TmsDbContext>(options =>
 
 var app = builder.Build();
 
+// --- M7 Session 1 - Exercise 1: V1 Deprecation Middleware ---
+// Must be registered before MapControllers so every V1 endpoint gets the headers.
+app.UseMiddleware<V1DeprecationMiddleware>();
+
 // --- Session 1 - Exercise 1B: Middleware Ordering ---
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// --- Session 3 - Exercise 6 & 7: Environment-Aware Error Handling ---
+// --- M7 Session 1 - Exercise 2: Global Exception Handler ---
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 

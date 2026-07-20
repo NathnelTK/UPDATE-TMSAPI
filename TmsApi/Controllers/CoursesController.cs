@@ -34,6 +34,10 @@ public class CoursesController(ICourseService courseService) : ControllerBase
     [HttpGet("{id:int}", Name = nameof(GetCourseById))]
     public async Task<IActionResult> GetCourseById(int id, CancellationToken ct)
     {
+      
+// TODO 3: Call courseService.GetByIdAsync(id, ct).
+//Return Ok(course) when the result is not null.
+//Return NotFound() when the result is null.
         var course = await courseService.GetByIdAsync(id, ct);
         return course is not null ? Ok(course) : NotFound();
     }
@@ -59,7 +63,9 @@ public class CoursesController(ICourseService courseService) : ControllerBase
                 Status = StatusCodes.Status409Conflict
             });
         }
-
+// TODO 4: Call courseService.CreateAsync(course, ct).
+//Return CreatedAtAction(nameof(GetCourseById), new {id = result.Id }, result).
+//ly.
         var result = await courseService.CreateAsync(request, ct);
 
         return CreatedAtAction(nameof(GetCourseById), new { id = result.Id }, result);
