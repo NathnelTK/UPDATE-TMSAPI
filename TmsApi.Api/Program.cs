@@ -1,0 +1,306 @@
+using Asp.Versioning;
+using FluentValidation;
+using MediatR;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Hybrid;
+using Scalar.AspNetCore;
+using System.Threading.RateLimiting;
+using TmsApi.Application.Interfaces;
+using TmsApi.Behaviors;
+using TmsApi.Enrollments.Commands;
+using TmsApi.Enrollments.Queries;
+using TmsApi.ExceptionHandlers;
+using TmsApi.Filters;
+using TmsApi.Infrastructure.Persistence;
+using TmsApi.Api.Hubs;
+using TmsApi.Api.Middleware;
+using TmsApi.Api.Legacy;
+using TmsApi.Api.RateLimiting;
+using TmsApi.Api.Transcripts;
+using TmsApi.Domain.Entities;
+using TmsApi.Infrastructure.Persistence.Services;
+using TmsApi.Infrastructure.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllers(options =>
+{
+    // --- M6 Session 2 - Exercise 4: Global Audit Log Filter ---
+    // Cross-cutting concern: logs every API call and its status code.
+    // Registered globally so every controller action is covered automatically.
+    options.Filters.Add<AuditLogFilter>();
+});
+
+// --- Session 3 - Exercise 6: Standardized RFC 9457 Problem Details Service ---
+builder.Services.AddProblemDetails();
+
+// --- Session 3 - Exercise 7: Add OpenAPI document services ---
+builder.Services.AddOpenApi();
+
+// --- Session 1 - Exercise 1: Registering Authentication and Authorization Services ---
+builder.Services
+    .AddAuthentication("Training")
+    .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
+
+builder.Services.AddAuthorization();
+
+// --- Session 2 - Exercise 2: Dependency Injection Registrations ---
+builder.Services.AddSingleton<EnrollmentWorker>();
+builder.Services.AddScoped<ILegacyEnrollmentService, LegacyEnrollmentService>();
+
+// --- M7 Session 3 - Exercise 5: Transcript worker and status store ---
+builder.Services.AddSingleton<StatusStore>();
+builder.Services.AddSingleton(new TranscriptGeneratorOptions());
+builder.Services.AddHostedService<TranscriptGenerator>();
+
+// --- M7 Session 3 - Exercise 6: SignalR hub services ---
+builder.Services.AddSignalR();
+
+// --- M7 Session 1 - Exercise 1: API Versioning ---
+builder.Services
+    .AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+    })
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
+
+// --- M7 Session 1 - Exercise 2: MediatR with CQRS ---
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(EnrollStudentHandler).Assembly));
+
+// --- M7 Session 1 - Exercise 2: FluentValidation ---
+builder.Services.AddValidatorsFromAssembly(typeof(EnrollStudentValidator).Assembly);
+
+// --- M7 Session 1 - Exercise 2: Pipeline Behaviors (Logging FIRST, Validation SECOND) ---
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+// --- M7 Session 1 - Exercise 2: Global Exception Handler ---
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+// --- M6 Session 1 - Exercise 1: Register M6 Service Layer ---
+// Scoped to match TmsDbContext lifetime — one service instance per HTTP request.
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
+
+// --- Session 2 - Exercise 3: strongly-typed Options with Validation ---
+builder.Services.AddOptions<PaymentOptions>()
+    .BindConfiguration("Payments")
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// --- Session 2 - Exercise 2: Active DI Container Validation ---
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = true;
+});
+
+// --- M5 Lab Session 1: Register TmsDbContext with PostgreSQL and SQL Logging ---
+builder.Services.AddDbContext<TmsDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+        .LogTo(Console.WriteLine, LogLevel.Information)          // Log SQL to output window
+        .EnableSensitiveDataLogging());                          // Show parameters in query logs (dev only)
+
+// --- Session 2 - Exercise 3: HybridCache with stampede protection ---
+builder.Services.AddHybridCache(options =>
+{
+    options.DefaultEntryOptions = new HybridCacheEntryOptions
+    {
+        Expiration = TimeSpan.FromMinutes(10),
+        LocalCacheExpiration = TimeSpan.FromMinutes(2)
+    };
+});
+
+// --- Session 2 - Exercise 3: Register cached course service ---
+builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
+
+// --- Session 2 - Exercise 4: Tier-aware rate limiting ---
+builder.Services.AddRateLimiter(options =>
+{
+    // Global partitioned rate limiter - per API key/client
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var (partitionKey, tier) = ApiKeyResolver.Resolve(httpContext);
+
+        return tier switch
+        {
+            ApiKeyTier.Paid => RateLimitPartition.GetTokenBucketLimiter(
+                partitionKey: $"paid:{partitionKey}",
+                factory: _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 200,
+                    TokensPerPeriod = 100,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }),
+            ApiKeyTier.Free => RateLimitPartition.GetTokenBucketLimiter(
+                partitionKey: $"free:{partitionKey}",
+                factory: _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 30,
+                    TokensPerPeriod = 10,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }),
+            _ => RateLimitPartition.GetTokenBucketLimiter(
+                partitionKey: $"anon:{partitionKey}",
+                factory: _ => new TokenBucketRateLimiterOptions
+                {
+                    TokenLimit = 10,
+                    TokensPerPeriod = 5,
+                    ReplenishmentPeriod = TimeSpan.FromSeconds(10),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                })
+        };
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, ct) =>
+    {
+        var retryAfter = "10";
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var ts))
+            retryAfter = ((int)ts.TotalSeconds).ToString();
+
+        context.HttpContext.Response.Headers.RetryAfter = retryAfter;
+        context.HttpContext.Response.ContentType = "application/problem+json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Title = "Rate limit exceeded",
+            Detail = $"Too many requests. Retry after {retryAfter} seconds.",
+            Status = StatusCodes.Status429TooManyRequests,
+            Type = "https://tms.local/errors/rate_limit_exceeded"
+        }, ct);
+    };
+
+    // Concurrency limiter for transcript endpoint
+    options.AddConcurrencyLimiter("transcripts", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.QueueLimit = 20;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+    });
+});
+
+var app = builder.Build();
+
+// --- M7 Session 1 - Exercise 1: V1 Deprecation Middleware ---
+// Must be registered before MapControllers so every V1 endpoint gets the headers.
+app.UseMiddleware<V1DeprecationMiddleware>();
+
+// --- Session 1 - Exercise 1B: Middleware Ordering ---
+app.UseMiddleware<RequestLoggingMiddleware>();
+
+// --- M7 Session 1 - Exercise 2: Global Exception Handler ---
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
+// --- Session 3 - Exercise 6 & 7: Environment-Aware Error Handling ---
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+
+// --- Session 2 - Exercise 4: Rate limiting middleware ---
+app.UseRateLimiter();
+
+app.MapControllers();
+app.MapHub<TmsHub>("/hub/transcripts");
+
+// --- Session 3 - Exercise 7: Environment-Aware OpenAPI & Scalar Explorer ---
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
+
+// --- Session 1 - Exercise 1: Secured Minimal API Endpoint ---
+app.MapGet("/api/assessments/results", () => Results.Ok(new
+{
+    courseCode = "CS-101",
+    studentId = "S-001",
+    letterGrade = "A"
+})).RequireAuthorization();
+
+// --- Session 2 - Exercise 2: Enrollment Worker Smoke Test Route ---
+app.MapGet("/api/enrollments/worker-smoke", (EnrollmentWorker worker) =>
+{
+    worker.ProcessBatch();
+    return Results.Ok("processed");
+});
+
+// --- Session 3 - Exercise 6: Simulated Error Route ---
+app.MapGet("/api/error", () =>
+{
+    throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
+});
+
+// --- M5 Lab Session 1: Auto-Seed test data at startup ---
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+    context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
+
+    if (!context.Students.Any())
+    {
+        var students = new List<Student>
+        {
+            new() { RegistrationNumber = "TMS-2026-0001", Name = "Alice Smith", GPA = 3.8m, IsActive = true },
+            new() { RegistrationNumber = "TMS-2026-0002", Name = "Bob Jones", GPA = 2.9m, IsActive = true },
+            new() { RegistrationNumber = "TMS-2026-0003", Name = "Charlie Brown", GPA = 3.4m, IsActive = false },
+            new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
+            new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
+        };
+        context.Students.AddRange(students);
+
+        var courses = new List<Course>
+        {
+            new() { Code = "CS-101", Title = "Introduction to Computer Science", MaxCapacity = 30 },
+            new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
+            new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
+        };
+        context.Courses.AddRange(courses);
+
+        context.SaveChanges();
+
+        var enrollments = new List<Enrollment>
+        {
+            new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
+            new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
+            new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
+            new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
+        };
+        context.Enrollments.AddRange(enrollments);
+        context.SaveChanges();
+    }
+}
+
+// --- M6 Session 2 - Before You Begin: Deterministic Course Seeder ---
+// Seeds 25 courses for pagination verification (Development only).
+// Idempotent — skips if courses already exist.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+    await DataSeeder.SeedAsync(context);
+}
+
+app.Run();

@@ -1,0 +1,13 @@
+# .gitignore for .NET Core Web API
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+appsettings.Development.json
+appsettings.json
+launchSettings.json
+*.pdf
+pass
+.kiro/
