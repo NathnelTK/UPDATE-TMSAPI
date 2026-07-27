@@ -15,11 +15,13 @@ using TmsApi.Enrollments.Queries;
 using TmsApi.ExceptionHandlers;
 using TmsApi.Filters;
 using TmsApi.Infrastructure.Persistence;
+using TmsApi.Api.Hubs;
 using TmsApi.Api.Middleware;
-using TmsApi.Domain.Entities;
 using TmsApi.Api.Legacy;
-using TmsApi.Infrastructure.Persistence.Services;
 using TmsApi.Api.RateLimiting;
+using TmsApi.Api.Transcripts;
+using TmsApi.Domain.Entities;
+using TmsApi.Infrastructure.Persistence.Services;
 using TmsApi.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,6 +51,14 @@ builder.Services.AddAuthorization();
 // --- Session 2 - Exercise 2: Dependency Injection Registrations ---
 builder.Services.AddSingleton<EnrollmentWorker>();
 builder.Services.AddScoped<ILegacyEnrollmentService, LegacyEnrollmentService>();
+
+// --- M7 Session 3 - Exercise 5: Transcript worker and status store ---
+builder.Services.AddSingleton<StatusStore>();
+builder.Services.AddSingleton(new TranscriptGeneratorOptions());
+builder.Services.AddHostedService<TranscriptGenerator>();
+
+// --- M7 Session 3 - Exercise 6: SignalR hub services ---
+builder.Services.AddSignalR();
 
 // --- M7 Session 1 - Exercise 1: API Versioning ---
 builder.Services
@@ -213,6 +223,7 @@ app.UseAuthorization();
 app.UseRateLimiter();
 
 app.MapControllers();
+app.MapHub<TmsHub>("/hub/transcripts");
 
 // --- Session 3 - Exercise 7: Environment-Aware OpenAPI & Scalar Explorer ---
 if (app.Environment.IsDevelopment())
