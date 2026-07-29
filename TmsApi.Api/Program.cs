@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
+using Polly; // M7 Session 4 - Exercise 8: Polly v8 resilience
+using Polly.CircuitBreaker;
+using Polly.Retry;
+using Polly.Timeout;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
 using TmsApi.Application.Interfaces;
@@ -14,6 +18,7 @@ using TmsApi.Enrollments.Commands;
 using TmsApi.Enrollments.Queries;
 using TmsApi.ExceptionHandlers;
 using TmsApi.Filters;
+using TmsApi.Infrastructure.ExternalServices; // M7 Session 4 - Exercise 8: CertificateService
 using TmsApi.Infrastructure.Persistence;
 using TmsApi.Api.Hubs;
 using TmsApi.Api.Middleware;
@@ -126,6 +131,64 @@ builder.Services.AddHybridCache(options =>
 
 // --- Session 2 - Exercise 3: Register cached course service ---
 builder.Services.AddScoped<ICachedCourseService, CachedCourseService>();
+
+// --- M7 Session 4 - Exercise 8: Polly v8 resilience pipeline for certificate service ---
+// Order matters: Timeout (outer) → CircuitBreaker (middle) → Retry (inner).
+// The retry runs inside the timeout so a single retry attempt is bounded.
+// The breaker runs across retries so it sees per-call failures.
+builder.Services.AddResiliencePipeline("certificate-api", pipeline =>
+{
+    pipeline
+        // Outer: per-request hard timeout — protects against hung downstream.
+        .AddTimeout(TimeSpan.FromSeconds(5))
+        // Middle: circuit breaker — protects against sustained outage.
+        .AddCircuitBreaker(new CircuitBreakerStrategyOptions
+        {
+            FailureRatio = 0.5,
+            MinimumThroughput = 10,
+            SamplingDuration = TimeSpan.FromSeconds(30),
+            BreakDuration = TimeSpan.FromSeconds(15),
+            ShouldHandle = new PredicateBuilder()
+                .Handle<HttpRequestException>()
+                .Handle<TimeoutRejectedException>(),
+            OnOpened = args =>
+            {
+                Console.WriteLine("Circuit OPENED — stopping requests to certificate service");
+                return ValueTask.CompletedTask;
+            },
+            OnClosed = args =>
+            {
+                Console.WriteLine("Circuit CLOSED — certificate service recovered");
+                return ValueTask.CompletedTask;
+            }
+        })
+        // Inner: retry with jitter — only for transient failures.
+        .AddRetry(new RetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            Delay = TimeSpan.FromMilliseconds(500),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+            ShouldHandle = new PredicateBuilder()
+                .Handle<HttpRequestException>()
+                .Handle<TimeoutRejectedException>(),
+            OnRetry = args =>
+            {
+                Console.WriteLine(
+                    $"Retry #{args.AttemptNumber} after {args.RetryDelay.TotalMilliseconds:F0}ms ({args.Outcome.Exception?.GetType().Name})");
+                return ValueTask.CompletedTask;
+            }
+        });
+});
+
+// --- M7 Session 4 - Exercise 8: Register typed HttpClient for CertificateService ---
+// BaseAddress points at the running Kestrel URL so the HttpClient can reach /fake/certificates.
+builder.Services.AddHttpClient<ICertificateService, CertificateService>((sp, client) =>
+{
+    var baseUrl = sp.GetRequiredService<IConfiguration>().GetValue<string>("TmsApi:PublicBaseUrl")
+        ?? "https://localhost:7190";
+    client.BaseAddress = new Uri(baseUrl);
+});
 
 // --- Session 2 - Exercise 4: Tier-aware rate limiting ---
 builder.Services.AddRateLimiter(options =>
@@ -252,6 +315,35 @@ app.MapGet("/api/error", () =>
 {
     throw new TmsDatabaseException("Simulated database failure for ProblemDetails testing");
 });
+
+// --- M7 Session 4 - Exercise 8: Lab-only fake certificate service ---
+// Simulates three realistic failure modes of an external certificate-printing service:
+//   - every 7th call hangs (timeout test)
+//   - every 3rd call returns 503 (transient retry test)
+//   - every 11th call returns 400 (non-transient, must NOT retry)
+// Marked test-only — would never ship to production.
+var attempts = 0;
+app.MapPost("/fake/certificates", async () =>
+{
+    var n = Interlocked.Increment(ref attempts);
+    if (n % 7 == 0)
+    {
+        // Hang — simulates a downstream that accepted the request and never responded.
+        await Task.Delay(TimeSpan.FromSeconds(20));
+        return Results.Ok(new { Status = "issued", Attempt = n });
+    }
+    if (n % 3 != 0)
+    {
+        // Transient: 503 Service Unavailable — Polly retries this.
+        return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    }
+    if (n % 11 == 0)
+    {
+        // Non-transient: 400 — Polly must NOT retry this.
+        return Results.BadRequest(new { error = "validation_failed" });
+    }
+    return Results.Ok(new { Status = "issued", Attempt = n });
+}).WithTags("lab-fixtures");
 
 // --- M5 Lab Session 1: Auto-Seed test data at startup ---
 using (var scope = app.Services.CreateScope())
