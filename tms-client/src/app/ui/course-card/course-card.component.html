@@ -1,0 +1,26 @@
+<div class="card">
+  <h3>
+    <!-- [routerLink] builds the URL dynamically from course().id -->
+    <a [routerLink]="['/courses', course().id]">{{ course().title }}</a>
+    ({{ course().code }})
+  </h3>
+
+  <p>
+    Enrolled {{ course().enrollmentCount }} of {{ course().maxCapacity }} seats
+  </p>
+
+  <!-- [class.closed] — property binding: adds CSS class when course is full -->
+  <span
+    class="badge"
+    [class.closed]="course().enrollmentCount >= course().maxCapacity"
+  >
+    {{ course().enrollmentCount >= course().maxCapacity ? 'Full' : 'Accepting enrollments' }}
+  </span>
+
+  <button
+    (click)="enrollClicked.emit(course())"
+    [disabled]="course().enrollmentCount >= course().maxCapacity"
+  >
+    Enroll
+  </button>
+</div>
