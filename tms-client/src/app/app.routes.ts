@@ -9,11 +9,17 @@ export const routes: Routes = [
       ),
   },
   {
-    // :id is mapped to the component input via withComponentInputBinding()
     path: 'courses/:id',
     loadComponent: () =>
       import('./features/course-detail/course-detail.component').then(
         (m) => m.CourseDetailComponent,
+      ),
+  },
+  {
+    path: 'enroll',
+    loadComponent: () =>
+      import('./features/enrollment-form/enrollment-form.component').then(
+        (m) => m.EnrollmentFormComponent,
       ),
   },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

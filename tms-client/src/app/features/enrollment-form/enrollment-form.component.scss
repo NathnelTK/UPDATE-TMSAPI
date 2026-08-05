@@ -1,0 +1,62 @@
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 480px;
+  padding: 2rem;
+
+  label {
+    font-weight: 600;
+    margin-top: 0.75rem;
+  }
+
+  input, textarea {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+
+  .error {
+    color: #c62828;
+    font-size: 0.8rem;
+  }
+
+  .backup-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+
+    input { flex: 1; }
+  }
+
+  button {
+    margin-top: 0.25rem;
+    padding: 0.4rem 1rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background-color: #1976d2;
+    color: #fff;
+
+    &[type="submit"]:disabled {
+      background-color: #bdbdbd;
+      cursor: not-allowed;
+    }
+
+    &[type="button"] {
+      background-color: #757575;
+    }
+  }
+}
+
+.success {
+  padding: 1rem 1.5rem;
+  background-color: #e8f5e9;
+  border: 1px solid #2e7d32;
+  border-radius: 4px;
+  color: #2e7d32;
+  max-width: 480px;
+  margin: 2rem;
+}
