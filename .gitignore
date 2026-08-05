@@ -11,3 +11,8 @@ launchSettings.json
 *.pdf
 pass
 .kiro/
+
+# Angular tms-client
+tms-client/node_modules/
+tms-client/.angular/
+tms-client/dist/
