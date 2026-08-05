@@ -8,6 +8,13 @@ export const routes: Routes = [
         (m) => m.StudentDashboardComponent,
       ),
   },
-  // Redirect root URL to /dashboard
+  {
+    // :id is mapped to the component input via withComponentInputBinding()
+    path: 'courses/:id',
+    loadComponent: () =>
+      import('./features/course-detail/course-detail.component').then(
+        (m) => m.CourseDetailComponent,
+      ),
+  },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ];
