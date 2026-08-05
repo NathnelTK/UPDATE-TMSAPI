@@ -36,6 +36,18 @@ using TmsApi.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- M8 Session 3 - Exercise 6: CORS for Angular dev server ---
+// The Angular app on localhost:4200 is a different origin from the API on localhost:7190.
+// The browser blocks cross-origin requests unless the server explicitly allows them.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policy =>
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
+});
+
 // --- M7 Session 4 - Exercise 9: Structured JSON logging with trace correlation ---
 // Every log line is JSON with TraceId, SpanId, RequestId, and scope properties.
 // The LoggingBehavior from Ex 2 adds RequestName/CorrelationId to scope — these flow through.
@@ -340,6 +352,7 @@ app.UseStatusCodePages();
 
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseCors("AllowAngular"); // Must be after UseRouting, before UseAuthentication
 app.UseAuthentication();
 app.UseAuthorization();
 
