@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Polly; // M7 Session 4 - Exercise 8: Polly v8 resilience
 using Polly.CircuitBreaker;
 using Polly.Retry;
@@ -18,6 +22,7 @@ using TmsApi.Enrollments.Commands;
 using TmsApi.Enrollments.Queries;
 using TmsApi.ExceptionHandlers;
 using TmsApi.Filters;
+using TmsApi.Infrastructure.Caching;     // M7 Session 4 - Exercise 9: TmsMeters.ServiceName
 using TmsApi.Infrastructure.ExternalServices; // M7 Session 4 - Exercise 8: CertificateService
 using TmsApi.Infrastructure.Persistence;
 using TmsApi.Api.Hubs;
@@ -30,6 +35,48 @@ using TmsApi.Infrastructure.Persistence.Services;
 using TmsApi.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- M7 Session 4 - Exercise 9: Structured JSON logging with trace correlation ---
+// Every log line is JSON with TraceId, SpanId, RequestId, and scope properties.
+// The LoggingBehavior from Ex 2 adds RequestName/CorrelationId to scope — these flow through.
+// Use: dotnet run 2>&1 | jq 'select(.TraceId == "abc123…")' to grep one trace end-to-end.
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.JsonWriterOptions = new System.Text.Json.JsonWriterOptions { Indented = false };
+});
+
+// --- M7 Session 4 - Exercise 9: OpenTelemetry traces and metrics ---
+// AddMeter name MUST equal TmsMeters.ServiceName ("tms-api") — mismatched strings = silent drop.
+// OTLP exporter sends to http://localhost:4317 by default.
+// Run Aspire Dashboard (dotnet tool install -g Aspire.Dashboard) or
+// Jaeger (docker run --rm -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one) to view.
+// If no collector is running, the exporter silently drops spans — the API still starts fine.
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService(
+        serviceName: TmsMeters.ServiceName,
+        serviceVersion: "1.0.0"))
+    .WithTracing(t => t
+        .AddSource(TmsMeters.ServiceName)
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter())
+    .WithMetrics(m => m
+        .AddMeter(TmsMeters.ServiceName)
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddOtlpExporter());
+
+// --- M7 Session 4 - Exercise 9: Health checks — liveness vs readiness ---
+// Liveness ("live" tag): cheap self-check — tells the orchestrator whether to restart the pod.
+// Readiness ("ready" tag): DB check — tells the load balancer to take the pod in/out of rotation.
+// A pod that cannot reach its database should leave the pool, not be restarted.
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy("alive"), tags: ["live"])
+    .AddNpgSql(
+        connectionString: builder.Configuration.GetConnectionString("TmsDatabase")!,
+        name: "postgres",
+        tags: ["ready"]);
 
 // Add services to the container.
 builder.Services.AddControllers(options =>
@@ -261,6 +308,20 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+// --- M7 Session 4 - Exercise 9: Health probe endpoints ---
+// /health/live  — liveness: orchestrator restart signal. Never depends on external services.
+// /health/ready — readiness: load-balancer in/out-of-rotation signal. Depends on DB.
+// Both exempt from rate limiting so they are never throttled under load.
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+}).DisableRateLimiting();
+
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+}).DisableRateLimiting();
 
 // --- M7 Session 1 - Exercise 1: V1 Deprecation Middleware ---
 // Must be registered before MapControllers so every V1 endpoint gets the headers.
