@@ -36,16 +36,27 @@ using TmsApi.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- M8 Session 3 - Exercise 6: CORS for Angular dev server ---
-// The Angular app on localhost:4200 is a different origin from the API on localhost:7190.
-// The browser blocks cross-origin requests unless the server explicitly allows them.
+// --- M10 Session 1 - Exercise 1: Named CORS policy for the Angular client ---
+// The Angular app on localhost:4200 is a different origin from the API, so the
+// browser blocks cross-origin XHR unless the server grants explicit permission.
+// Load the allowed origins from configuration (appsettings.Development.json)
+// instead of hardcoding URLs in C# — falls back to the Angular dev server.
+var allowedOrigins = builder.Configuration
+    .GetSection("AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:4200"];
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins("http://localhost:4200")
+    options.AddPolicy("TmsClient", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials());
+              .AllowCredentials()                     // Required for HttpOnly auth cookies (Session 2)
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+    });
+    // NOTE: never combine .AllowAnyOrigin() with .AllowCredentials() — ASP.NET Core
+    // throws at startup because the browser forbids credentialed wildcard origins.
 });
 
 // --- M7 Session 4 - Exercise 9: Structured JSON logging with trace correlation ---
@@ -352,7 +363,7 @@ app.UseStatusCodePages();
 
 app.UseHttpsRedirection();
 app.UseRouting();
-app.UseCors("AllowAngular"); // Must be after UseRouting, before UseAuthentication
+app.UseCors("TmsClient"); // Must be after UseRouting, before UseAuthentication (M10 S1 Ex1)
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -420,49 +431,55 @@ app.MapPost("/fake/certificates", async () =>
 }).WithTags("lab-fixtures");
 
 // --- M5 Lab Session 1: Auto-Seed test data at startup ---
-using (var scope = app.Services.CreateScope())
+// Migration and seeding can fail when a remote DB is unreachable (CI/dev). To allow
+// frontend development without a live Postgres, respect the SKIP_DB_MIGRATE env var.
+var skipMigrate = Environment.GetEnvironmentVariable("SKIP_DB_MIGRATE");
+if (!string.Equals(skipMigrate, "true", StringComparison.OrdinalIgnoreCase))
 {
-    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
-    context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
-
-    if (!context.Students.Any())
+    using (var scope = app.Services.CreateScope())
     {
-        var students = new List<Student>
-        {
-            new() { RegistrationNumber = "TMS-2026-0001", Name = "Alice Smith", GPA = 3.8m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0002", Name = "Bob Jones", GPA = 2.9m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0003", Name = "Charlie Brown", GPA = 3.4m, IsActive = false },
-            new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
-        };
-        context.Students.AddRange(students);
+        var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+        context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
 
-        var courses = new List<Course>
+        if (!context.Students.Any())
         {
-            new() { Code = "CS-101", Title = "Introduction to Computer Science", MaxCapacity = 30 },
-            new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
-            new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
-        };
-        context.Courses.AddRange(courses);
+            var students = new List<Student>
+            {
+                new() { RegistrationNumber = "TMS-2026-0001", Name = "Alice Smith", GPA = 3.8m, IsActive = true },
+                new() { RegistrationNumber = "TMS-2026-0002", Name = "Bob Jones", GPA = 2.9m, IsActive = true },
+                new() { RegistrationNumber = "TMS-2026-0003", Name = "Charlie Brown", GPA = 3.4m, IsActive = false },
+                new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
+                new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
+            };
+            context.Students.AddRange(students);
 
-        context.SaveChanges();
+            var courses = new List<Course>
+            {
+                new() { Code = "CS-101", Title = "Introduction to Computer Science", MaxCapacity = 30 },
+                new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
+                new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
+            };
+            context.Courses.AddRange(courses);
 
-        var enrollments = new List<Enrollment>
-        {
-            new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
-            new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
-            new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
-            new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
-        };
-        context.Enrollments.AddRange(enrollments);
-        context.SaveChanges();
+            context.SaveChanges();
+
+            var enrollments = new List<Enrollment>
+            {
+                new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
+                new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
+                new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
+                new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
+            };
+            context.Enrollments.AddRange(enrollments);
+            context.SaveChanges();
+        }
     }
 }
 
 // --- M6 Session 2 - Before You Begin: Deterministic Course Seeder ---
 // Seeds 25 courses for pagination verification (Development only).
-// Idempotent — skips if courses already exist.
-if (app.Environment.IsDevelopment())
+// Idempotent — skips if courses already exist. Skip when SKIP_DB_MIGRATE=true.
+if (app.Environment.IsDevelopment() && !string.Equals(skipMigrate, "true", StringComparison.OrdinalIgnoreCase))
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();

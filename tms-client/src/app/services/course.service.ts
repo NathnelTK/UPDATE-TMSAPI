@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 import { Course, CourseDetail, PagedResponse } from '../models/course.model';
 
 // @Injectable({ providedIn: 'root' }) — Angular creates one singleton instance
@@ -12,8 +13,10 @@ export class CourseService {
   // M7 produced two envelopes:
   //   GET /api/v1/courses → { items: Course[], totalCount, … }  (map p.items)
   //   GET /api/v2/courses → { data: Course[], meta: {…}, links: {…} } (map p.data)
-  // This service targets the V2 endpoint; swap baseUrl and map key if using V1.
-  private baseUrl = 'https://localhost:7190/api/v2/courses';
+  // This service targets the V2 endpoint. The base URL is no longer hardcoded —
+  // it comes from environment.apiUrl (M10 S1 Ex1) so dev hits the cross-origin
+  // backend and production can use a same-origin relative path.
+  private baseUrl = `${environment.apiUrl}/courses`;
 
   getAll() {
     // V2 envelope: data[] carries the rows, meta carries paging.
