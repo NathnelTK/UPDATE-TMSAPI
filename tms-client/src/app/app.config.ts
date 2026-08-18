@@ -4,6 +4,7 @@ import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@ang
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { routes } from './app.routes';
 import { credentialsInterceptor } from './interceptors/credentials.interceptor';
+import { errorInterceptor } from './interceptors/error.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,11 +14,12 @@ export const appConfig: ApplicationConfig = {
     // withComponentInputBinding() lets URL params flow directly into @input()
     // fields on routed components (used in Exercise 4 / course-detail).
     provideRouter(routes, withComponentInputBinding()),
-    // M10 Session 2 — credentialsInterceptor attaches withCredentials:true so the
-    // HttpOnly auth cookie flows; withXsrfConfiguration makes Angular read the
+    // M10 Session 2/3 — credentialsInterceptor attaches withCredentials:true so the
+    // HttpOnly auth cookie flows; errorInterceptor centralises RFC 7807 error
+    // handling (401 → /login); withXsrfConfiguration makes Angular read the
     // XSRF-TOKEN cookie and echo it as X-XSRF-TOKEN on POST/PUT/DELETE.
     provideHttpClient(
-      withInterceptors([credentialsInterceptor]),
+      withInterceptors([credentialsInterceptor, errorInterceptor]),
       withXsrfConfiguration({
         cookieName: 'XSRF-TOKEN', // Cookie name set by the .NET server
         headerName: 'X-XSRF-TOKEN', // Header name the .NET antiforgery service expects
