@@ -36,16 +36,27 @@ using TmsApi.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- M8 Session 3 - Exercise 6: CORS for Angular dev server ---
-// The Angular app on localhost:4200 is a different origin from the API on localhost:7190.
-// The browser blocks cross-origin requests unless the server explicitly allows them.
+// --- M10 Session 1 - Exercise 1: Named CORS policy for the Angular client ---
+// The Angular app on localhost:4200 is a different origin from the API, so the
+// browser blocks cross-origin XHR unless the server grants explicit permission.
+// Load the allowed origins from configuration (appsettings.Development.json)
+// instead of hardcoding URLs in C# — falls back to the Angular dev server.
+var allowedOrigins = builder.Configuration
+    .GetSection("AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:4200"];
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins("http://localhost:4200")
+    options.AddPolicy("TmsClient", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials());
+              .AllowCredentials()                     // Required for HttpOnly auth cookies (Session 2)
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+    });
+    // NOTE: never combine .AllowAnyOrigin() with .AllowCredentials() — ASP.NET Core
+    // throws at startup because the browser forbids credentialed wildcard origins.
 });
 
 // --- M7 Session 4 - Exercise 9: Structured JSON logging with trace correlation ---
@@ -352,7 +363,7 @@ app.UseStatusCodePages();
 
 app.UseHttpsRedirection();
 app.UseRouting();
-app.UseCors("AllowAngular"); // Must be after UseRouting, before UseAuthentication
+app.UseCors("TmsClient"); // Must be after UseRouting, before UseAuthentication (M10 S1 Ex1)
 app.UseAuthentication();
 app.UseAuthorization();
 
