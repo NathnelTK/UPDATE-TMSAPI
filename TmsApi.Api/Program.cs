@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -330,6 +331,14 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
+// --- M10 Session 2 - Exercise 2 Part B: Antiforgery for XSRF double-submit ---
+// HeaderName matches Angular's withXsrfConfiguration so the SPA can echo the
+// readable XSRF-TOKEN cookie back as X-XSRF-TOKEN on POST/PUT/DELETE requests.
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-XSRF-TOKEN";
+});
+
 var app = builder.Build();
 
 // --- M7 Session 4 - Exercise 9: Health probe endpoints ---
@@ -366,6 +375,28 @@ app.UseRouting();
 app.UseCors("TmsClient"); // Must be after UseRouting, before UseAuthentication (M10 S1 Ex1)
 app.UseAuthentication();
 app.UseAuthorization();
+
+// --- M10 Session 2 - Exercise 2 Part B: issue the readable XSRF-TOKEN cookie ---
+// Runs after auth so it can see the authenticated principal. Angular reads this
+// cookie and echoes it in the X-XSRF-TOKEN header; cross-origin sites cannot read
+// cookies under the Same-Origin Policy, so they cannot forge the matching header.
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true ||
+        context.Request.Cookies.ContainsKey("tms_auth"))
+    {
+        var antiforgery = context.RequestServices.GetRequiredService<IAntiforgery>();
+        var tokens = antiforgery.GetAndStoreTokens(context);
+
+        context.Response.Cookies.Append("XSRF-TOKEN", tokens.RequestToken!, new CookieOptions
+        {
+            HttpOnly = false, // MUST be false so Angular JavaScript can read it
+            Secure = !app.Environment.IsDevelopment(),
+            SameSite = SameSiteMode.Strict
+        });
+    }
+    await next(context);
+});
 
 // --- Session 2 - Exercise 4: Rate limiting middleware ---
 app.UseRateLimiter();
