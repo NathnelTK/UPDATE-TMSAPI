@@ -3,7 +3,10 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -118,10 +121,34 @@ builder.Services.AddProblemDetails();
 // --- Session 3 - Exercise 7: Add OpenAPI document services ---
 builder.Services.AddOpenApi();
 
-// --- Session 1 - Exercise 1: Registering Authentication and Authorization Services ---
+// --- Session 1 - Exercise 1 / M11 Session 2 - Exercise 4: Authentication schemes ---
+// JWT bearer is now the DEFAULT scheme — the Angular client sends
+// `Authorization: Bearer <token>` after login, and RequireAuthorization() validates
+// that token. The original "Training" scheme is retained as a named scheme so the
+// M9 lab handler still resolves when referenced explicitly.
 builder.Services
-    .AddAuthentication("Training")
-    .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null)
+    .AddJwtBearer(options =>
+    {
+        // Every dimension validated: a token must be signed with our key, issued by
+        // us, for our audience, and unexpired. Any failure => 401 challenge.
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
 
 builder.Services.AddAuthorization();
 
@@ -144,6 +171,10 @@ builder.Services.AddIdentityCore<TmsUser>(options =>
 })
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<TmsDbContext>();
+
+// --- M11 Session 2 - Exercise 4: JWT issuance service ---
+// Scoped alongside UserManager so AuthController can mint access tokens per request.
+builder.Services.AddScoped<TokenService>();
 
 // --- Session 2 - Exercise 2: Dependency Injection Registrations ---
 builder.Services.AddSingleton<EnrollmentWorker>();
