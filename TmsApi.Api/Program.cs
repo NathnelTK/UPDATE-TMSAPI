@@ -420,49 +420,55 @@ app.MapPost("/fake/certificates", async () =>
 }).WithTags("lab-fixtures");
 
 // --- M5 Lab Session 1: Auto-Seed test data at startup ---
-using (var scope = app.Services.CreateScope())
+// Migration and seeding can fail when a remote DB is unreachable (CI/dev). To allow
+// frontend development without a live Postgres, respect the SKIP_DB_MIGRATE env var.
+var skipMigrate = Environment.GetEnvironmentVariable("SKIP_DB_MIGRATE");
+if (!string.Equals(skipMigrate, "true", StringComparison.OrdinalIgnoreCase))
 {
-    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
-    context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
-
-    if (!context.Students.Any())
+    using (var scope = app.Services.CreateScope())
     {
-        var students = new List<Student>
-        {
-            new() { RegistrationNumber = "TMS-2026-0001", Name = "Alice Smith", GPA = 3.8m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0002", Name = "Bob Jones", GPA = 2.9m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0003", Name = "Charlie Brown", GPA = 3.4m, IsActive = false },
-            new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
-            new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
-        };
-        context.Students.AddRange(students);
+        var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
+        context.Database.Migrate(); // Applies any pending migrations; keeps migration history intact
 
-        var courses = new List<Course>
+        if (!context.Students.Any())
         {
-            new() { Code = "CS-101", Title = "Introduction to Computer Science", MaxCapacity = 30 },
-            new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
-            new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
-        };
-        context.Courses.AddRange(courses);
+            var students = new List<Student>
+            {
+                new() { RegistrationNumber = "TMS-2026-0001", Name = "Alice Smith", GPA = 3.8m, IsActive = true },
+                new() { RegistrationNumber = "TMS-2026-0002", Name = "Bob Jones", GPA = 2.9m, IsActive = true },
+                new() { RegistrationNumber = "TMS-2026-0003", Name = "Charlie Brown", GPA = 3.4m, IsActive = false },
+                new() { RegistrationNumber = "TMS-2026-0004", Name = "Diana Prince", GPA = 3.9m, IsActive = true },
+                new() { RegistrationNumber = "TMS-2026-0005", Name = "Evan Wright", GPA = 2.5m, IsActive = true }
+            };
+            context.Students.AddRange(students);
 
-        context.SaveChanges();
+            var courses = new List<Course>
+            {
+                new() { Code = "CS-101", Title = "Introduction to Computer Science", MaxCapacity = 30 },
+                new() { Code = "CS-201", Title = "Data Structures and Algorithms", MaxCapacity = 25 },
+                new() { Code = "MAT-101", Title = "Calculus I", MaxCapacity = 40 }
+            };
+            context.Courses.AddRange(courses);
 
-        var enrollments = new List<Enrollment>
-        {
-            new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
-            new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
-            new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
-            new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
-        };
-        context.Enrollments.AddRange(enrollments);
-        context.SaveChanges();
+            context.SaveChanges();
+
+            var enrollments = new List<Enrollment>
+            {
+                new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
+                new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
+                new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
+                new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
+            };
+            context.Enrollments.AddRange(enrollments);
+            context.SaveChanges();
+        }
     }
 }
 
 // --- M6 Session 2 - Before You Begin: Deterministic Course Seeder ---
 // Seeds 25 courses for pagination verification (Development only).
-// Idempotent — skips if courses already exist.
-if (app.Environment.IsDevelopment())
+// Idempotent — skips if courses already exist. Skip when SKIP_DB_MIGRATE=true.
+if (app.Environment.IsDevelopment() && !string.Equals(skipMigrate, "true", StringComparison.OrdinalIgnoreCase))
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
