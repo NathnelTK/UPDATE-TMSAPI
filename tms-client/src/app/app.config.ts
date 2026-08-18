@@ -1,6 +1,7 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -14,5 +15,8 @@ export const appConfig: ApplicationConfig = {
     // Register HttpClient globally — needed from Exercise 6 onwards.
     // Added now to avoid a confusing NullInjectorError later.
     provideHttpClient(),
+    // M9 Session 2 — Angular Material needs the animations package for sort
+    // arrows, paginator transitions, etc. The async provider lazy-loads it.
+    provideAnimationsAsync(),
   ],
 };
