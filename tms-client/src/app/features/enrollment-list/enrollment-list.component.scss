@@ -1,38 +1,45 @@
-.enrollment-card {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid #ddd;
+table {
+  width: 100%;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.approved {
+  background: #065f46;
+  color: #a7f3d0;
+}
+
+.status-badge.pending {
+  background: #78350f;
+  color: #fde68a;
+}
+
+.status-badge.rejected {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+button {
+  padding: 0.4rem 1rem;
+  border: none;
   border-radius: 6px;
-  margin-bottom: 0.5rem;
+  background: #4f46e5;
+  color: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
 
-  span { flex: 1; }
-
-  .status {
-    padding: 0.2rem 0.6rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-
-    &[data-status='Pending']  { background: #fff3e0; color: #e65100; }
-    &[data-status='Approved'] { background: #e8f5e9; color: #2e7d32; }
-    &[data-status='Rejected'] { background: #ffebee; color: #c62828; }
-  }
-
-  button {
-    padding: 0.3rem 0.8rem;
-    font-size: 0.8rem;
-    cursor: pointer;
-    border: none;
-    border-radius: 4px;
-    background-color: #1976d2;
-    color: #fff;
-    &:hover { background-color: #1565c0; }
-  }
+button:hover {
+  background: #4338ca;
 }
 
 .error {
   color: #c62828;
-  margin-top: 0.5rem;
+  margin: 0.5rem 0;
 }
