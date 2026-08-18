@@ -1,0 +1,5 @@
+/* Global styles for the Angular application */
+html, body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
