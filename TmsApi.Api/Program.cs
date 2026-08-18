@@ -402,7 +402,7 @@ app.Use(async (context, next) =>
 app.UseRateLimiter();
 
 app.MapControllers();
-app.MapHub<TmsHub>("/hub/transcripts");
+app.MapHub<TmsHub>("/hub/transcripts").RequireCors("TmsClient"); // M10 S3 Ex3 Part C: allow cross-origin WebSocket handshake from :4200
 
 // --- Session 3 - Exercise 7: Environment-Aware OpenAPI & Scalar Explorer ---
 if (app.Environment.IsDevelopment())

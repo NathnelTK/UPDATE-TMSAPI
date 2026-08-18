@@ -127,6 +127,35 @@ public class CoursesController(ICachedCourseService cachedService, TmsDbContext 
 
         return NoContent();
     }
+
+    /// <summary>
+    /// DELETE /api/v2/courses/{id} - remove a course.
+    /// M10 Session 3 - Exercise 3: returns 409 Conflict as an RFC 7807
+    /// ProblemDetails payload when the course still has active enrollments, so the
+    /// Angular SignalStore's optimistic delete rolls back and restores the row.
+    /// </summary>
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteCourse(int id, CancellationToken ct)
+    {
+        var course = await context.Courses.FindAsync([id], ct);
+        if (course is null)
+            return NotFound();
+
+        var hasEnrollments = await context.Enrollments.AnyAsync(e => e.CourseId == id, ct);
+        if (hasEnrollments)
+        {
+            return Problem(
+                title: "Course has active enrollments",
+                detail: $"Cannot delete course {course.Code}: active student enrollments exist.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        context.Courses.Remove(course);
+        await context.SaveChangesAsync(ct);
+        await cachedService.InvalidateCourseCacheAsync(ct);
+
+        return NoContent();
+    }
 }
 
 /// <summary>

@@ -29,4 +29,11 @@ export class CourseService {
   getById(id: string) {
     return this.http.get<CourseDetail>(`${this.baseUrl}/${id}`);
   }
+
+  // M10 Session 3 - Exercise 3: delete a course. Returns the raw Observable so
+  // CourseStore can subscribe and roll back optimistically if the server replies
+  // 409 Conflict (active enrollments) with an RFC 7807 ProblemDetails body.
+  delete(id: number) {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }
