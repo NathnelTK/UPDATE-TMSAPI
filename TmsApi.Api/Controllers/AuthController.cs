@@ -1,63 +1,101 @@
-using Asp.Versioning;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using TmsApi.Application.DTOs;
+using TmsApi.Domain.Entities;
 
 namespace TmsApi.Api.Controllers;
 
 /// <summary>
-/// M10 Session 2 - Exercise 2: The Identity Handshake (demo transport layer).
-/// On successful login the API writes the token into an <b>HttpOnly</b> "tms_auth"
-/// cookie — client-side JavaScript (including any injected XSS payload) is
-/// physically incapable of reading it, and the browser re-attaches it
-/// automatically on every same-site request.
+/// M11 Session 1 - Exercise 2: Identity-backed authentication.
+/// Replaces the M10 demo cookie controller (which used hardcoded credentials to
+/// exercise browser transport). This version manages real accounts through
+/// UserManager&lt;TmsUser&gt;, enforcing the enterprise password policy and
+/// brute-force lockout configured in Program.cs. Verified over HTTP/Scalar.
 ///
-/// Uses hardcoded demo credentials for transport testing only. Module 11 replaces
-/// this with ASP.NET Core Identity, BCrypt password hashing, and signed JWTs.
-/// Routed as /api/v2/auth/* to match the V2 spine the Angular client targets.
+/// NOTE: routed at /api/auth (unversioned) per the M11 verification steps, and the
+/// request/response contract is now email-based — so the M10 Angular cookie
+/// handshake no longer matches. Re-wiring the Angular client to JWTs is a later
+/// session (M11 S3, Exercise 6), out of scope for these lab PDFs.
 /// </summary>
 [ApiController]
-[Route("api/v{version:apiVersion}/auth")]
-[ApiVersion("2.0")]
-public class AuthController : ControllerBase
+[Route("api/[controller]")]
+public class AuthController(
+    UserManager<TmsUser> userManager,
+    RoleManager<IdentityRole> roleManager) : ControllerBase
 {
-    // Demo account — M10 exercises transport (cookies/XSRF), not real accounts.
-    private const string DemoUsername = "admin";
-    private const string DemoPassword = "Password123!";
+    public record RegisterRequest(
+        string Email,
+        string Password,
+        string FirstName,
+        string LastName,
+        string Role);
 
-    [HttpPost("login")]
-    public IActionResult Login(
-        [FromBody] LoginRequest request,
-        [FromServices] IWebHostEnvironment env)
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        // Validate credentials (demo account for M10 transport testing).
-        if (request.Username == DemoUsername && request.Password == DemoPassword)
+        var existingUser = await userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
         {
-            var dummyJwt = "header.payload.signature-demo-token";
-
-            // Append the HttpOnly authentication cookie — JavaScript CANNOT read this.
-            Response.Cookies.Append("tms_auth", dummyJwt, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = !env.IsDevelopment(), // HTTPS in prod; HTTP permitted locally in dev
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTimeOffset.UtcNow.AddHours(2)
-            });
-
-            return Ok(new UserProfileDto("System Admin", "Admin"));
+            // Prevent account enumeration by returning a generic response.
+            return Ok(new { message = "Registration request received." });
         }
 
-        return Unauthorized(new { detail = "Invalid username or password." });
+        var user = new TmsUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            FirstName = request.FirstName,
+            LastName = request.LastName
+        };
+
+        var result = await userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors.Select(e => e.Description);
+            return BadRequest(new { errors });
+        }
+
+        // Ensure the requested role exists before assigning it.
+        if (!await roleManager.RoleExistsAsync(request.Role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(request.Role));
+        }
+
+        await userManager.AddToRoleAsync(user, request.Role);
+        return Ok(new { message = "Registration successful." });
     }
 
-    [HttpGet("me")]
-    public IActionResult GetCurrentUser()
+    public record LoginRequest(string Email, string Password);
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        // Inspect the cookie the browser attaches automatically on each request.
-        if (Request.Cookies.TryGetValue("tms_auth", out _))
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user == null)
         {
-            return Ok(new UserProfileDto("System Admin", "Admin"));
+            return Unauthorized(new { detail = "Invalid credentials." });
         }
 
-        return Unauthorized(new { detail = "Session expired or missing authentication cookie." });
+        if (await userManager.IsLockedOutAsync(user))
+        {
+            return StatusCode(423, new { detail = "Account locked due to multiple failed login attempts. Try again in 15 minutes." });
+        }
+
+        var validPassword = await userManager.CheckPasswordAsync(user, request.Password);
+        if (!validPassword)
+        {
+            await userManager.AccessFailedAsync(user);
+            return Unauthorized(new { detail = "Invalid credentials." });
+        }
+
+        // Reset the failed-attempt counter on successful login.
+        await userManager.ResetAccessFailedCountAsync(user);
+
+        return Ok(new
+        {
+            userId = user.Id,
+            email = user.Email,
+            firstName = user.FirstName,
+            lastName = user.LastName
+        });
     }
 }
