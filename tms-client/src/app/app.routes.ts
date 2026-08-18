@@ -30,5 +30,15 @@ export const routes: Routes = [
         (m) => m.EnrollmentCommandCenterComponent,
       ),
   },
+  {
+    // M9 Session 2 — Instructor dashboard with a @defer-loaded analytics chart.
+    // loadComponent gives route-level code splitting; the @defer block inside
+    // the template adds a second layer that loads the chart chunk on viewport.
+    path: 'instructor-dashboard',
+    loadComponent: () =>
+      import('./features/instructor-dashboard/instructor-dashboard.component').then(
+        (m) => m.InstructorDashboardComponent,
+      ),
+  },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
 ];
