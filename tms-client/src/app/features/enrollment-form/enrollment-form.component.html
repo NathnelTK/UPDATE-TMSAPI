@@ -1,61 +1,75 @@
-<h2>Course Enrollment</h2>
+<div class="page">
+  <header class="page-head">
+    <h1>Enroll a student</h1>
+    <p class="tms-muted">Assign a student to a course. New enrollments enter the approval queue.</p>
+  </header>
 
-@if (submitted()) {
-  <div class="success">
-    Enrollment submitted. Check the console for the payload.
-  </div>
-} @else {
-  <!-- [formGroup] connects this <form> to the TypeScript form object. -->
-  <!-- (ngSubmit) calls submit() on Enter or submit-button click.     -->
-  <form [formGroup]="form" (ngSubmit)="submit()">
-
-    <label for="studentId">Student ID</label>
-    <!-- formControlName links this <input> to the 'studentId' field. -->
-    <input
-      id="studentId"
-      formControlName="studentId"
-      placeholder="e.g. STU-1234"
-    />
-    <!-- Show error only when field is touched AND invalid -->
-    @if (form.controls.studentId.touched && form.controls.studentId.invalid) {
-      <span class="error">Enter a valid Student ID (format: STU-0000)</span>
-    }
-
-    <label for="courseId">Course ID</label>
-    <input
-      id="courseId"
-      formControlName="courseId"
-      placeholder="e.g. 1 (TMS course primary key)"
-    />
-    @if (form.controls.courseId.touched && form.controls.courseId.invalid) {
-      <span class="error">Course ID is required</span>
-    }
-
-    <label for="term">Term</label>
-    <input id="term" formControlName="term" />
-
-    <label for="notes">Notes (optional)</label>
-    <textarea id="notes" formControlName="notes"></textarea>
-
-    <h3>Backup Courses</h3>
-    <!-- $index is a built-in @for variable — current array position (0, 1, 2…) -->
-    @for (backup of backups.controls; track $index) {
-      <div class="backup-row">
-        <!-- [formControl] binds to the control object directly (not by string name) -->
-        <input
-          [formControl]="backup"
-          [placeholder]="'Backup course ' + ($index + 1)"
-        />
-        <!-- type="button" prevents implicit form submission -->
-        <button type="button" (click)="removeBackup($index)">Remove</button>
+  @if (success(); as msg) {
+    <div class="tms-card panel success">
+      <span class="material-icons">check_circle</span>
+      <div class="panel-body">
+        <strong>Enrollment submitted</strong>
+        <p>{{ msg }}</p>
+        <div class="panel-actions">
+          <button type="button" class="tms-btn tms-btn--primary" (click)="enrollAnother()">
+            Enroll another
+          </button>
+          <a routerLink="/enrollments" class="tms-btn tms-btn--ghost">View queue</a>
+        </div>
       </div>
-    }
+    </div>
+  } @else {
+    <form class="tms-card form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      @if (error(); as msg) {
+        <div class="alert" role="alert">
+          <span class="material-icons">error_outline</span>
+          <span>{{ msg }}</span>
+        </div>
+      }
 
-    <button type="button" (click)="addBackup()">Add Backup Course</button>
+      <div class="field">
+        <label for="studentId">Student</label>
+        <div class="select-wrap">
+          <span class="material-icons lead">person</span>
+          <select id="studentId" formControlName="studentId">
+            <option [ngValue]="null" disabled>
+              {{ studentsResource.isLoading() ? 'Loading students…' : 'Select a student' }}
+            </option>
+            @for (s of studentsResource.value() ?? []; track s.id) {
+              <option [ngValue]="s.id">{{ s.name }} · {{ s.registrationNumber }}</option>
+            }
+          </select>
+        </div>
+        @if (form.controls.studentId.touched && form.controls.studentId.invalid) {
+          <span class="field-error">Please select a student.</span>
+        }
+      </div>
 
-    <hr />
+      <div class="field">
+        <label for="courseCode">Course</label>
+        <div class="select-wrap">
+          <span class="material-icons lead">menu_book</span>
+          <select id="courseCode" formControlName="courseCode">
+            <option value="" disabled>
+              {{ coursesResource.isLoading() ? 'Loading courses…' : 'Select a course' }}
+            </option>
+            @for (c of coursesResource.value() ?? []; track c.id) {
+              <option [value]="c.code">{{ c.code }} — {{ c.title }}</option>
+            }
+          </select>
+        </div>
+        @if (form.controls.courseCode.touched && form.controls.courseCode.invalid) {
+          <span class="field-error">Please select a course.</span>
+        }
+      </div>
 
-    <!-- [disabled] disables the button when ANY field fails validation -->
-    <button type="submit" [disabled]="form.invalid">Confirm Enrollment</button>
-  </form>
-}
+      <button type="submit" class="tms-btn tms-btn--primary submit" [disabled]="loading()">
+        @if (loading()) {
+          <span class="spinner"></span> Submitting…
+        } @else {
+          <span class="material-icons">how_to_reg</span> Confirm enrollment
+        }
+      </button>
+    </form>
+  }
+</div>

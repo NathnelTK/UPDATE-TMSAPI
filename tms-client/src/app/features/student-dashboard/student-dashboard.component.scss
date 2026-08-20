@@ -1,50 +1,91 @@
-.dashboard {
-  padding: 2rem;
-  max-width: 800px;
-  margin: 0 auto;
-
-  h1 { font-size: 1.75rem; margin-bottom: 0.5rem; }
-  p  { margin: 0.25rem 0; font-size: 1rem; }
-
-  button {
-    margin-top: 1.5rem;
-    padding: 0.5rem 1.25rem;
-    font-size: 1rem;
-    cursor: pointer;
-    background-color: #1976d2;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    &:hover { background-color: #1565c0; }
-  }
+:host {
+  display: block;
 }
 
-.catalog-section {
-  padding: 0 2rem 2rem;
-  max-width: 800px;
-  margin: 0 auto;
+.welcome {
+  margin-bottom: 1.5rem;
+}
+.welcome h1 {
+  font-size: 1.7rem;
+  margin: 0 0 0.25rem;
+}
+.welcome p { margin: 0; }
+
+/* --------------------------------- KPIs ---------------------------------- */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.4rem;
+}
+.kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--tms-radius-md);
+  font-size: 24px;
+}
+.i-courses { background: var(--tms-primary-weak); color: var(--tms-primary); }
+.i-open { background: var(--tms-success-weak); color: var(--tms-success); }
+.i-seats { background: var(--tms-info-weak); color: var(--tms-info); }
+.kpi-value {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.kpi-label {
+  font-size: 0.82rem;
+  color: var(--tms-text-muted);
 }
 
+/* -------------------------------- Catalog -------------------------------- */
+.catalog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.catalog-head h2 {
+  font-size: 1.25rem;
+  margin: 0;
+}
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.15rem;
 }
 
-.empty-state {
+.state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 2rem;
-  text-align: center;
-  color: #777;
-  border: 1px dashed #ccc;
-  border-radius: 8px;
+  color: var(--tms-text-muted);
 }
+.state.error { color: var(--tms-danger); align-items: flex-start; }
+.state.error p { margin: 0.2rem 0 0; color: var(--tms-text-muted); font-size: 0.9rem; }
 
-.selection-hint {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid #1976d2;
-  border-radius: 4px;
-  background-color: #e3f2fd;
-  font-size: 0.9rem;
+/* Loading skeletons */
+.skeleton {
+  height: 180px;
+  background: linear-gradient(
+    100deg,
+    var(--tms-surface) 30%,
+    var(--tms-surface-hover) 50%,
+    var(--tms-surface) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
 }

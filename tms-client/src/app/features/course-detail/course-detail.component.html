@@ -1,6 +1,66 @@
-<div class="detail">
-  <h1>Course Detail</h1>
-  <p>Course ID: <strong>{{ id() }}</strong></p>
-  <!-- routerLink does a soft navigation — keeps app state; no full reload -->
-  <a routerLink="/dashboard">← Back to Dashboard</a>
+<div class="page">
+  <a routerLink="/dashboard" class="back-link">
+    <span class="material-icons">arrow_back</span> Back to catalog
+  </a>
+
+  @if (courseResource.isLoading()) {
+    <div class="tms-card state">
+      <span class="spinner"></span> Loading course…
+    </div>
+  } @else if (courseResource.error()) {
+    <div class="tms-card state error">
+      <span class="material-icons">cloud_off</span>
+      <div>
+        <strong>Couldn’t load this course.</strong>
+        <p>Make sure the API is running and the course exists.</p>
+      </div>
+    </div>
+  } @else if (courseResource.value()) {
+    @if (courseResource.value(); as course) {
+      <article class="tms-card detail">
+        <header class="detail-head">
+          <div>
+            <span class="code-chip">{{ course.code }}</span>
+            <h1>{{ course.title }}</h1>
+          </div>
+          <span
+            class="tms-badge"
+            [class.tms-badge--approved]="!isFull()"
+            [class.tms-badge--rejected]="isFull()"
+          >
+            {{ isFull() ? 'Full' : 'Open' }}
+          </span>
+        </header>
+
+        <section class="capacity">
+          <div class="capacity-top">
+            <span class="tms-muted">Capacity</span>
+            <span class="capacity-fig">
+              {{ course.enrollmentCount }} / {{ course.maxCapacity }} enrolled
+            </span>
+          </div>
+          <div class="bar">
+            <div
+              class="bar-fill"
+              [class.bar-fill--full]="isFull()"
+              [style.width.%]="fillPct()"
+            ></div>
+          </div>
+          <span class="seats tms-muted">{{ seatsLeft() }} seats remaining</span>
+        </section>
+
+        <footer class="detail-foot">
+          <a
+            class="tms-btn tms-btn--primary"
+            [class.disabled]="isFull()"
+            [routerLink]="isFull() ? null : ['/enroll']"
+            [queryParams]="{ courseCode: course.code }"
+          >
+            <span class="material-icons">person_add</span>
+            {{ isFull() ? 'Course is full' : 'Enroll a student' }}
+          </a>
+        </footer>
+      </article>
+    }
+  }
 </div>

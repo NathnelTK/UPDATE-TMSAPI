@@ -1,0 +1,108 @@
+:host {
+  display: block;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--tms-text-muted);
+  font-weight: 500;
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+.back-link:hover { color: var(--tms-primary); text-decoration: none; }
+.back-link .material-icons { font-size: 19px; }
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: var(--tms-text-muted);
+}
+.state.error { color: var(--tms-danger); align-items: flex-start; }
+.state.error p { margin: 0.2rem 0 0; color: var(--tms-text-muted); font-size: 0.9rem; }
+
+.detail {
+  padding: 1.75rem;
+}
+.detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--tms-border);
+}
+.code-chip {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--tms-primary);
+  background: var(--tms-primary-weak);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--tms-radius-sm);
+  margin-bottom: 0.6rem;
+}
+.detail-head h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.capacity {
+  padding: 1.5rem 0;
+}
+.capacity-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+}
+.capacity-fig { font-weight: 600; }
+.bar {
+  height: 10px;
+  border-radius: var(--tms-radius-pill);
+  background: var(--tms-surface-hover);
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: var(--tms-radius-pill);
+  background: linear-gradient(90deg, var(--tms-primary), #8b5cf6);
+  transition: width 0.4s ease;
+}
+.bar-fill--full {
+  background: linear-gradient(90deg, var(--tms-danger), #f97316);
+}
+.seats {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.detail-foot {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--tms-border);
+}
+.detail-foot .tms-btn.disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--tms-border-strong);
+  border-top-color: var(--tms-primary);
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

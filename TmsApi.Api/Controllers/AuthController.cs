@@ -1,26 +1,31 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TmsApi.Domain.Entities;
+using TmsApi.Infrastructure.Persistence;
+using TmsApi.Infrastructure.Services;
 
 namespace TmsApi.Api.Controllers;
 
 /// <summary>
-/// M11 Session 1 - Exercise 2: Identity-backed authentication.
-/// Replaces the M10 demo cookie controller (which used hardcoded credentials to
-/// exercise browser transport). This version manages real accounts through
-/// UserManager&lt;TmsUser&gt;, enforcing the enterprise password policy and
-/// brute-force lockout configured in Program.cs. Verified over HTTP/Scalar.
+/// M11 Session 2 - Exercise 4 &amp; 5: JWT-backed authentication.
+/// Builds on the Session 1 Identity controller: login now verifies the password
+/// through UserManager&lt;TmsUser&gt; (enterprise policy + lockout) and, on success,
+/// issues a short-lived JWT access token plus a long-lived, single-use refresh token.
+/// Refreshing rotates the token; replaying a used token trips theft detection and
+/// revokes every session for that user.
 ///
-/// NOTE: routed at /api/auth (unversioned) per the M11 verification steps, and the
-/// request/response contract is now email-based — so the M10 Angular cookie
-/// handshake no longer matches. Re-wiring the Angular client to JWTs is a later
-/// session (M11 S3, Exercise 6), out of scope for these lab PDFs.
+/// NOTE: routed at /api/auth (unversioned). Re-wiring the Angular client to consume
+/// these tokens is beyond the scope of the M11 lab PDFs (S1/S2), so the SPA cookie
+/// handshake from M10 no longer matches this contract.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController(
     UserManager<TmsUser> userManager,
-    RoleManager<IdentityRole> roleManager) : ControllerBase
+    RoleManager<IdentityRole> roleManager,
+    TmsDbContext db,
+    TokenService tokenService) : ControllerBase
 {
     public record RegisterRequest(
         string Email,
@@ -90,12 +95,80 @@ public class AuthController(
         // Reset the failed-attempt counter on successful login.
         await userManager.ResetAccessFailedCountAsync(user);
 
-        return Ok(new
+        var tokens = await IssueTokensAsync(user);
+        return Ok(tokens);
+    }
+
+    public record RefreshRequest(string RefreshToken);
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+    {
+        var existingToken = await db.RefreshTokens
+            .FirstOrDefaultAsync(t => t.Token == request.RefreshToken);
+
+        if (existingToken == null)
         {
-            userId = user.Id,
-            email = user.Email,
-            firstName = user.FirstName,
-            lastName = user.LastName
-        });
+            return Unauthorized(new { detail = "Invalid refresh token." });
+        }
+
+        // Theft detection: a token that was already rotated is being replayed.
+        // Someone is holding a stolen copy — revoke every session for this user.
+        // Checked BEFORE the revoked/expired guard so a reused token is always
+        // reported as theft.
+        if (existingToken.IsUsed)
+        {
+            var userTokens = await db.RefreshTokens
+                .Where(t => t.UserId == existingToken.UserId)
+                .ToListAsync();
+            foreach (var token in userTokens)
+            {
+                token.IsRevoked = true;
+            }
+            await db.SaveChangesAsync();
+
+            return Unauthorized(new { detail = "Token theft detected. All user sessions revoked." });
+        }
+
+        if (existingToken.IsRevoked || existingToken.ExpiresAt < DateTime.UtcNow)
+        {
+            return Unauthorized(new { detail = "Refresh token expired or revoked." });
+        }
+
+        var user = await userManager.FindByIdAsync(existingToken.UserId);
+        if (user == null)
+        {
+            return Unauthorized(new { detail = "Invalid refresh token." });
+        }
+
+        // Rotate: mark the presented token used, then issue a fresh pair.
+        existingToken.IsUsed = true;
+        var tokens = await IssueTokensAsync(user);
+        return Ok(tokens);
+    }
+
+    /// <summary>
+    /// Mints a JWT access token and persists a new single-use refresh token for the
+    /// user. Shared by login and refresh so both return the identical shape.
+    /// </summary>
+    private async Task<object> IssueTokensAsync(TmsUser user)
+    {
+        var roles = await userManager.GetRolesAsync(user);
+        var accessToken = tokenService.GenerateJwt(user, roles);
+
+        var refreshToken = new RefreshToken
+        {
+            Token = Guid.NewGuid().ToString("N"),
+            UserId = user.Id,
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        };
+        db.RefreshTokens.Add(refreshToken);
+        await db.SaveChangesAsync();
+
+        return new
+        {
+            accessToken,
+            refreshToken = refreshToken.Token
+        };
     }
 }

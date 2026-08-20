@@ -1,9 +1,16 @@
 // Development environment (swapped in for `ng serve` and dev builds).
 // The Angular dev server runs on http://localhost:4200 while the .NET API
-// listens on https://localhost:7190 — a different origin. Pointing apiUrl at
-// the absolute backend URL is what makes the browser issue a genuine
-// cross-origin request, which the API's named "TmsClient" CORS policy grants.
+// listens on http://localhost:5003 (the default `dotnet run` "http" profile) — a
+// different origin. Absolute URLs make the
+// browser issue genuine cross-origin requests, which the API's "TmsClient" CORS
+// policy grants.
+//
+//   apiBase — root of the API (unversioned)
+//   apiUrl  — versioned data endpoints (courses, enrollments, students)
+//   authUrl — JWT auth endpoints (login/refresh/register), which are NOT versioned
 export const environment = {
   production: false,
-  apiUrl: 'https://localhost:7190/api/v2',
+  apiBase: 'http://localhost:5003/api',
+  apiUrl: 'http://localhost:5003/api/v2',
+  authUrl: 'http://localhost:5003/api/auth',
 };

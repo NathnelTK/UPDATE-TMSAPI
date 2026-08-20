@@ -1,27 +1,45 @@
-<!-- Renders instantly on any connection speed -->
-<div class="dashboard-header">
-  <h1>Instructor Command Center</h1>
-  <div class="kpi-row">
-    <div class="kpi-card">
-      <span class="kpi-value">{{ store.entities().length }}</span>
-      <span class="kpi-label">Total Enrollments</span>
+<header class="page-head">
+  <h1>Instructor command center</h1>
+  <p class="tms-muted">Live enrollment metrics. Analytics load on demand.</p>
+</header>
+
+<!-- Critical KPIs render instantly on any connection speed. -->
+<div class="kpi-row">
+  <div class="kpi tms-card">
+    <span class="kpi-icon i-total material-icons">groups</span>
+    <div>
+      <span class="kpi-value">{{ store.total() }}</span>
+      <span class="kpi-label">Total enrollments</span>
     </div>
-    <div class="kpi-card pending">
+  </div>
+  <div class="kpi tms-card">
+    <span class="kpi-icon i-pending material-icons">pending_actions</span>
+    <div>
       <span class="kpi-value">{{ store.pendingCount() }}</span>
-      <span class="kpi-label">Pending Approval</span>
+      <span class="kpi-label">Pending approval</span>
+    </div>
+  </div>
+  <div class="kpi tms-card">
+    <span class="kpi-icon i-approved material-icons">task_alt</span>
+    <div>
+      <span class="kpi-value">{{ store.approvedCount() }}</span>
+      <span class="kpi-label">Approved</span>
     </div>
   </div>
 </div>
 
-<!-- DEFERRED UI: the chart code lives in a separate .js chunk file -->
-<div class="chart-section">
+<!-- DEFERRED UI: the chart code lives in a separate .js chunk. -->
+<div class="chart-section tms-card">
   @defer (on viewport; prefetch on idle) {
     <tms-analytics-chart [data]="store.entities()" />
   } @placeholder {
-    <div class="skeleton-chart">Scroll down to view analytics…</div>
+    <div class="chart-state">
+      <span class="material-icons">bar_chart</span>
+      Scroll down to load analytics…
+    </div>
   } @loading (minimum 500ms) {
-    <div class="spinner">Downloading chart engine…</div>
+    <div class="chart-state"><span class="spinner"></span> Preparing analytics…</div>
   } @error {
-    <p>Failed to load chart. Check your connection.</p>
+    <div class="chart-state error">Failed to load chart. Check your connection.</div>
   }
 </div>

@@ -3,7 +3,10 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -116,12 +119,47 @@ builder.Services.AddControllers(options =>
 builder.Services.AddProblemDetails();
 
 // --- Session 3 - Exercise 7: Add OpenAPI document services ---
-builder.Services.AddOpenApi();
+// One OpenAPI document per API version. Asp.Versioning's ApiExplorer tags each action with
+// a GroupName ("v1"/"v2" via the GroupNameFormat "'v'VVV" below), and AddOpenApi(name)'s
+// default filter (ShouldInclude = GroupName is null || GroupName == documentName) then routes
+// each action into the document whose name matches its group.
+//
+// DEVIATION FROM THE LAB (Ex-7 registered only the default `AddOpenApi()`): that single call
+// produces just the "v1" document, which predates the V2 controllers. Because the app now
+// exposes a v2 surface — the one the Angular client actually calls — a "v2" document must be
+// registered too; otherwise /openapi/v2.json is never generated and Scalar reports
+// "v2 could not be loaded" while v1 keeps working.
+builder.Services.AddOpenApi("v1");
+builder.Services.AddOpenApi("v2");
 
-// --- Session 1 - Exercise 1: Registering Authentication and Authorization Services ---
+// --- Session 1 - Exercise 1 / M11 Session 2 - Exercise 4: Authentication schemes ---
+// JWT bearer is now the DEFAULT scheme — the Angular client sends
+// `Authorization: Bearer <token>` after login, and RequireAuthorization() validates
+// that token. The original "Training" scheme is retained as a named scheme so the
+// M9 lab handler still resolves when referenced explicitly.
 builder.Services
-    .AddAuthentication("Training")
-    .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null);
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddScheme<AuthenticationSchemeOptions, TrainingAuthHandler>("Training", null)
+    .AddJwtBearer(options =>
+    {
+        // Every dimension validated: a token must be signed with our key, issued by
+        // us, for our audience, and unexpired. Any failure => 401 challenge.
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
 
 builder.Services.AddAuthorization();
 
@@ -144,6 +182,10 @@ builder.Services.AddIdentityCore<TmsUser>(options =>
 })
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<TmsDbContext>();
+
+// --- M11 Session 2 - Exercise 4: JWT issuance service ---
+// Scoped alongside UserManager so AuthController can mint access tokens per request.
+builder.Services.AddScoped<TokenService>();
 
 // --- Session 2 - Exercise 2: Dependency Injection Registrations ---
 builder.Services.AddSingleton<EnrollmentWorker>();
@@ -517,10 +559,10 @@ if (!string.Equals(skipMigrate, "true", StringComparison.OrdinalIgnoreCase))
 
             var enrollments = new List<Enrollment>
             {
-                new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m },
-                new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m },
-                new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m },
-                new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m }
+                new() { StudentId = students[0].Id, CourseId = courses[0].Id, Grade = 4.0m, Status = EnrollmentStatus.Approved },
+                new() { StudentId = students[0].Id, CourseId = courses[1].Id, Grade = 3.6m, Status = EnrollmentStatus.Approved },
+                new() { StudentId = students[1].Id, CourseId = courses[0].Id, Grade = 2.8m, Status = EnrollmentStatus.Pending },
+                new() { StudentId = students[3].Id, CourseId = courses[1].Id, Grade = 3.9m, Status = EnrollmentStatus.Pending }
             };
             context.Enrollments.AddRange(enrollments);
             context.SaveChanges();
@@ -536,6 +578,41 @@ if (app.Environment.IsDevelopment() && !string.Equals(skipMigrate, "true", Strin
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
     await DataSeeder.SeedAsync(context);
+}
+
+// --- Demo Identity accounts for the Angular JWT login (Development only) ---
+// Idempotent: creates the role + user only if they don't already exist. The password
+// satisfies the enterprise policy configured above (12+ chars, upper, digit, symbol).
+// These let the SPA log in out of the box without a manual /api/auth/register call.
+if (app.Environment.IsDevelopment() && !string.Equals(skipMigrate, "true", StringComparison.OrdinalIgnoreCase))
+{
+    using var scope = app.Services.CreateScope();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<TmsUser>>();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    async Task EnsureUserAsync(string email, string firstName, string lastName, string role)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+            await roleManager.CreateAsync(new IdentityRole(role));
+
+        if (await userManager.FindByEmailAsync(email) is null)
+        {
+            var user = new TmsUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                FirstName = firstName,
+                LastName = lastName
+            };
+            var result = await userManager.CreateAsync(user, "Demo!Passw0rd2026");
+            if (result.Succeeded)
+                await userManager.AddToRoleAsync(user, role);
+        }
+    }
+
+    await EnsureUserAsync("admin@tms.local", "Admin", "User", "Admin");
+    await EnsureUserAsync("student@tms.local", "Liya", "Kebede", "Student");
 }
 
 app.Run();

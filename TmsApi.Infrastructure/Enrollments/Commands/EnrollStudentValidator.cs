@@ -4,7 +4,7 @@ namespace TmsApi.Enrollments.Commands;
 
 /// <summary>
 /// Validates EnrollStudentCommand before the handler runs.
-/// Validation failures throw ValidationException GÇö caught by GlobalExceptionHandler
+/// Validation failures throw ValidationException Gï¿½ï¿½ caught by GlobalExceptionHandler
 /// and translated to 400 Bad Request with field-level errors.
 /// </summary>
 public class EnrollStudentValidator : AbstractValidator<EnrollStudentCommand>
@@ -17,7 +17,10 @@ public class EnrollStudentValidator : AbstractValidator<EnrollStudentCommand>
         RuleFor(x => x.CourseCode).NotEmpty()
             .WithMessage("Course code is required.");
 
-        RuleFor(x => x.CourseCode).Matches(@"^[A-Z]{3}-\d{3}$")
-            .WithMessage("Course code must follow the format XXX-000 (e.g., CSE-101).");
+        // Real course prefixes vary in length (CS, CSE, MATH), so accept 2â€“4
+        // uppercase letters. This keeps every seeded course (CS-101, CSE-101,
+        // MAT-101) enrollable instead of rejecting the 2-letter ones at the gate.
+        RuleFor(x => x.CourseCode).Matches(@"^[A-Z]{2,4}-\d{3}$")
+            .WithMessage("Course code must follow the format LL[LL]-000 (e.g., CS-101 or CSE-101).");
     }
 }

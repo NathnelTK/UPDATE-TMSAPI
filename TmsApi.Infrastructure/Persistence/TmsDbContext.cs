@@ -15,6 +15,9 @@ public class TmsDbContext(DbContextOptions<TmsDbContext> options) : IdentityDbCo
     public DbSet<Assessment> Assessments => Set<Assessment>();
     public DbSet<Certificate> Certificates => Set<Certificate>();
 
+    // M11 Session 2 - Exercise 5: refresh tokens for JWT rotation + theft detection.
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     /// <summary>
     /// Applies all entity configurations found in the assembly containing TmsDbContext.
     /// This keeps OnModelCreating clean — each entity has its own configuration class.

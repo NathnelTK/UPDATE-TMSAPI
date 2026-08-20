@@ -1,66 +1,83 @@
-import { Component, inject, signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormControl,
-  Validators,
-  ReactiveFormsModule,
-  FormArray,
-} from '@angular/forms';
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { StudentService } from '../../services/student.service';
+import { CourseService } from '../../services/course.service';
+import { EnrollmentService } from '../../services/enrollment.service';
 
+/**
+ * Enrollment form — real `POST /api/v2/enrollments`. Student and course pickers are
+ * populated from the live API; the course can be preselected via a `?courseCode=`
+ * query param (deep-link from the course-detail page). Success and error states come
+ * straight from the API (RFC-7807 `detail` on failure).
+ */
 @Component({
   selector: 'app-enrollment-form',
   standalone: true,
-  // ReactiveFormsModule is required — without it Angular does not recognise
-  // formGroup, formControlName, or formControl directives.
-  imports: [ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './enrollment-form.component.html',
   styleUrl: './enrollment-form.component.scss',
 })
 export class EnrollmentFormComponent {
-  // inject() is Angular's function-based DI — equivalent to constructor injection in .NET.
   private fb = inject(FormBuilder);
+  private studentSvc = inject(StudentService);
+  private courseSvc = inject(CourseService);
+  private enrollmentSvc = inject(EnrollmentService);
 
-  // Signal tracks whether the form was submitted (drives @if in template).
-  submitted = signal(false);
+  // Bound from the ?courseCode= query param via withComponentInputBinding().
+  courseCode = input<string>('');
 
-  // nonNullable.group() ensures field values are typed as 'string' not 'string | null',
-  // saving null-checks everywhere. Each field is [defaultValue, validators].
-  form = this.fb.nonNullable.group({
-    studentId: [
-      '',
-      [Validators.required, Validators.pattern('^STU-[0-9]{4}$')],
-    ],
-    courseId: ['', Validators.required],
-    term: ['Fall 2026', Validators.required], // Pre-filled default
-    notes: [''],                              // Optional — no validators
-    backupCourses: this.fb.array<FormControl<string>>([]),
+  studentsResource = rxResource({ loader: () => this.studentSvc.getAll() });
+  coursesResource = rxResource({ loader: () => this.courseSvc.getAll() });
+
+  loading = signal(false);
+  error = signal<string | null>(null);
+  success = signal<string | null>(null);
+
+  form = this.fb.group({
+    studentId: this.fb.control<number | null>(null, [Validators.required]),
+    courseCode: this.fb.control('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.pattern(/^[A-Z]{2,4}-\d{3}$/)],
+    }),
   });
 
-  // Property accessor — shorthand for this.form.controls.backupCourses.
-  get backups() {
-    return this.form.controls.backupCourses;
+  constructor() {
+    // Preselect the course when arriving from a course-detail deep-link.
+    effect(() => {
+      const code = this.courseCode();
+      if (code) {
+        this.form.controls.courseCode.setValue(code);
+      }
+    });
   }
 
-  addBackup() {
-    this.backups.push(
-      this.fb.control('', { nonNullable: true, validators: Validators.required }),
-    );
-  }
-
-  removeBackup(index: number) {
-    this.backups.removeAt(index);
-  }
-
-  submit() {
-    if (this.form.valid) {
-      // getRawValue() always includes disabled fields — never use .value alone.
-      const payload = this.form.getRawValue();
-      console.log('Enrollment payload:', payload);
-      this.submitted.set(true);
-    } else {
-      // markAllAsTouched() forces Angular to show validation errors on every field,
-      // not only the ones the user has interacted with.
+  async submit(): Promise<void> {
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
+      return;
     }
+    this.loading.set(true);
+    this.error.set(null);
+    this.success.set(null);
+
+    const { studentId, courseCode } = this.form.getRawValue();
+    try {
+      await firstValueFrom(this.enrollmentSvc.enroll({ studentId: studentId!, courseCode }));
+      this.success.set(`Enrollment submitted for ${courseCode}. It is now pending approval.`);
+    } catch (err: unknown) {
+      const detail = (err as { error?: { detail?: string } })?.error?.detail;
+      this.error.set(detail ?? 'Enrollment failed. Please review the details and try again.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  enrollAnother(): void {
+    this.success.set(null);
+    this.form.controls.studentId.reset(null);
   }
 }

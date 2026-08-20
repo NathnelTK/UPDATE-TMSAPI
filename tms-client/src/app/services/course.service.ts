@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { Course, CourseDetail, PagedResponse } from '../models/course.model';
+import { Course, CourseDetail, CourseLink, PagedResponse } from '../models/course.model';
 
 // @Injectable({ providedIn: 'root' }) — Angular creates one singleton instance
 // shared across the entire app, similar to AddSingleton<T>() in .NET DI.
@@ -26,8 +26,14 @@ export class CourseService {
       .pipe(map((p) => (p.data ?? p.items) as Course[]));
   }
 
-  getById(id: string) {
-    return this.http.get<CourseDetail>(`${this.baseUrl}/${id}`);
+  // V2 detail envelope: { data: Course, links: LinkDto[] }. Flatten it into the
+  // CourseDetail the UI expects (course fields + a `links` array). The old code
+  // typed the raw response as CourseDetail, so `links` was always undefined and
+  // the course fields sat under `.data` — this unwraps both correctly.
+  getById(id: number) {
+    return this.http
+      .get<{ data: Course; links: CourseLink[] }>(`${this.baseUrl}/${id}`)
+      .pipe(map((res) => ({ ...res.data, links: res.links ?? [] }) as CourseDetail));
   }
 
   // M10 Session 3 - Exercise 3: delete a course. Returns the raw Observable so

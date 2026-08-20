@@ -58,4 +58,13 @@ export class EnrollmentListComponent {
     // The store is a singleton, so it can load immediately — no lifecycle hook.
     this.store.loadEnrollments();
   }
+
+  approve(row: Enrollment): void {
+    this.store.approveEnrollment(row.id);
+  }
+
+  reject(row: Enrollment): void {
+    // Pass the current status so an optimistic reject can roll back on failure.
+    this.store.rejectEnrollment({ id: row.id, previous: row.status });
+  }
 }

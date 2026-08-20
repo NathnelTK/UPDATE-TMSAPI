@@ -1,0 +1,72 @@
+<div class="shell" [class.drawer-open]="drawerOpen()">
+  <!-- Scrim behind the mobile drawer -->
+  <div class="scrim" (click)="toggleDrawer()"></div>
+
+  <!-- ------------------------------- Sidebar ------------------------------- -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark material-icons">school</span>
+      <span class="brand-text">TMS<small>Training</small></span>
+    </div>
+
+    <nav class="nav">
+      @for (item of nav; track item.path) {
+        <a
+          class="nav-link"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: false }"
+        >
+          <span class="material-icons">{{ item.icon }}</span>
+          <span class="nav-label">{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="hint">
+        <span class="material-icons">bolt</span>
+        <span>TMS Console v2</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- -------------------------------- Main --------------------------------- -->
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" (click)="toggleDrawer()" aria-label="Toggle navigation">
+        <span class="material-icons">menu</span>
+      </button>
+
+      <h1 class="page-title">{{ pageTitle() }}</h1>
+
+      <div class="topbar-actions">
+        <button
+          class="icon-btn"
+          (click)="toggleTheme()"
+          [attr.aria-label]="isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+          [title]="isDark() ? 'Light mode' : 'Dark mode'"
+        >
+          <span class="material-icons">{{ isDark() ? 'light_mode' : 'dark_mode' }}</span>
+        </button>
+
+        @if (user(); as u) {
+          <div class="user-chip">
+            <div class="avatar">{{ initials() }}</div>
+            <div class="user-meta">
+              <span class="user-name">{{ u.displayName }}</span>
+              <span class="user-role">{{ u.role }}</span>
+            </div>
+          </div>
+          <button class="icon-btn" (click)="logout()" aria-label="Sign out" title="Sign out">
+            <span class="material-icons">logout</span>
+          </button>
+        }
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

@@ -2,32 +2,48 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { Enrollment } from '../../models/enrollment.model';
 
 /**
- * Simulates a heavyweight charting library. In a production TMS this would be a
- * real chart (Chart.js, ngx-charts, …) rendering enrollment trends. A styled
- * placeholder with enough internal logic is sufficient to produce a measurable
- * separate JS chunk when loaded inside a @defer block.
+ * Lightweight enrollment breakdown chart. In a production TMS this would be a
+ * real charting library; a self-contained bar chart with enough internal logic
+ * is enough to produce a measurable separate JS chunk when loaded inside the
+ * instructor dashboard's @defer block. Bars scale relative to the largest bucket.
  */
 @Component({
   selector: 'tms-analytics-chart',
   standalone: true,
-  // OnPush: this component only re-checks when its signal input `data` changes
-  // reference or a signal it reads emits. Fits the signal-first pattern M9 teaches.
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="chart-container">
-      <h3>Enrollment Analytics</h3>
-      <div class="chart-bars">
-        <div class="bar approved" [style.height.px]="approvedHeight()">
-          <span>Approved</span>
+    <div class="chart">
+      <div class="chart-head">
+        <h3>Enrollment analytics</h3>
+        <span class="total tms-muted">{{ total() }} total records</span>
+      </div>
+
+      <div class="bars">
+        <div class="col">
+          <div class="track">
+            <div class="bar approved" [style.height.%]="approvedPct()">
+              <span class="val">{{ approvedCount() }}</span>
+            </div>
+          </div>
+          <span class="cat">Approved</span>
         </div>
-        <div class="bar pending" [style.height.px]="pendingHeight()">
-          <span>Pending</span>
+        <div class="col">
+          <div class="track">
+            <div class="bar pending" [style.height.%]="pendingPct()">
+              <span class="val">{{ pendingCount() }}</span>
+            </div>
+          </div>
+          <span class="cat">Pending</span>
         </div>
-        <div class="bar rejected" [style.height.px]="rejectedHeight()">
-          <span>Rejected</span>
+        <div class="col">
+          <div class="track">
+            <div class="bar rejected" [style.height.%]="rejectedPct()">
+              <span class="val">{{ rejectedCount() }}</span>
+            </div>
+          </div>
+          <span class="cat">Rejected</span>
         </div>
       </div>
-      <p class="chart-summary">Total records: {{ data().length }}</p>
     </div>
   `,
   styleUrl: './analytics-chart.component.scss',
@@ -35,20 +51,16 @@ import { Enrollment } from '../../models/enrollment.model';
 export class AnalyticsChartComponent {
   data = input.required<Enrollment[]>();
 
-  // computed() memoizes the result — the filter only re-runs when data() changes,
-  // not on every change-detection cycle.
-  approvedHeight = computed(() => {
-    const count = this.data().filter((e) => e.status === 'Approved').length;
-    return Math.max(20, count * 3);
-  });
+  approvedCount = computed(() => this.data().filter((e) => e.status === 'Approved').length);
+  pendingCount = computed(() => this.data().filter((e) => e.status === 'Pending').length);
+  rejectedCount = computed(() => this.data().filter((e) => e.status === 'Rejected').length);
+  total = computed(() => this.data().length);
 
-  pendingHeight = computed(() => {
-    const count = this.data().filter((e) => e.status === 'Pending').length;
-    return Math.max(20, count * 3);
-  });
-
-  rejectedHeight = computed(() => {
-    const count = this.data().filter((e) => e.status === 'Rejected').length;
-    return Math.max(20, count * 3);
-  });
+  // Scale each bar to the largest bucket so the chart always fills nicely.
+  private max = computed(() =>
+    Math.max(1, this.approvedCount(), this.pendingCount(), this.rejectedCount()),
+  );
+  approvedPct = computed(() => (this.approvedCount() / this.max()) * 100);
+  pendingPct = computed(() => (this.pendingCount() / this.max()) * 100);
+  rejectedPct = computed(() => (this.rejectedCount() / this.max()) * 100);
 }
