@@ -11,6 +11,9 @@ public class Enrollment
     public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
     public bool IsArchived { get; set; } = false; // Bulk archive flag for Exercise 9
 
+    // Approval workflow: a new enrollment is Pending until a registrar approves/rejects it.
+    public EnrollmentStatus Status { get; set; } = EnrollmentStatus.Pending;
+
     // Navigation properties back to entities
     public Student Student { get; set; } = null!;
     public Course Course { get; set; } = null!;

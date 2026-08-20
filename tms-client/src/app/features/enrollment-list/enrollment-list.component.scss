@@ -1,45 +1,100 @@
+:host {
+  display: block;
+}
+
+.list-card {
+  background: var(--tms-surface);
+  border: 1px solid var(--tms-border);
+  border-radius: var(--tms-radius-lg);
+  box-shadow: var(--tms-shadow-sm);
+  overflow: hidden;
+}
+
+.list-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--tms-danger-weak);
+  color: var(--tms-danger);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+.list-alert .material-icons { font-size: 19px; }
+
+.list-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.25rem;
+  color: var(--tms-text-muted);
+  font-size: 0.9rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* Make the Material table adopt our surface + token colours (works in both
+   themes because the values come from --tms-* custom properties). */
 table {
   width: 100%;
+  background: transparent;
 }
 
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
+.mat-mdc-header-row {
+  background: var(--tms-surface-2);
+}
+.mat-mdc-header-cell {
+  color: var(--tms-text-muted);
+  font-size: 0.78rem;
   font-weight: 600;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
+  border-bottom-color: var(--tms-border);
+}
+.mat-mdc-cell {
+  color: var(--tms-text);
+  border-bottom-color: var(--tms-border);
+}
+.mat-mdc-row {
+  transition: background 0.12s ease;
+}
+.mat-mdc-row:hover {
+  background: var(--tms-surface-hover);
 }
 
-.status-badge.approved {
-  background: #065f46;
-  color: #a7f3d0;
+.cell-strong { font-weight: 600; }
+.cell-sub {
+  font-size: 0.78rem;
+  color: var(--tms-text-muted);
 }
 
-.status-badge.pending {
-  background: #78350f;
-  color: #fde68a;
+.row-actions {
+  display: flex;
+  gap: 0.4rem;
 }
-
-.status-badge.rejected {
-  background: #7f1d1d;
-  color: #fca5a5;
+.tms-btn.sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  border-radius: var(--tms-radius-sm);
 }
-
-button {
-  padding: 0.4rem 1rem;
-  border: none;
-  border-radius: 6px;
-  background: #4f46e5;
-  color: white;
-  cursor: pointer;
+.decided {
   font-size: 0.85rem;
+  font-style: italic;
 }
 
-button:hover {
-  background: #4338ca;
+.mat-mdc-paginator {
+  background: transparent;
+  color: var(--tms-text-muted);
+  border-top: 1px solid var(--tms-border);
 }
 
-.error {
-  color: #c62828;
-  margin: 0.5rem 0;
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--tms-border-strong);
+  border-top-color: var(--tms-primary);
+  animation: spin 0.7s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }

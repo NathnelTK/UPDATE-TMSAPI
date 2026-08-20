@@ -1,0 +1,54 @@
+<div class="page">
+  <header class="page-head">
+    <h1>Student schedule</h1>
+    <p class="tms-muted">Select a student to view the courses they are enrolled in.</p>
+  </header>
+
+  <div class="picker tms-card">
+    <span class="material-icons lead">person_search</span>
+    <select #sel (change)="select(sel.value)">
+      <option value="">
+        {{ studentsResource.isLoading() ? 'Loading students…' : 'Select a student' }}
+      </option>
+      @for (s of studentsResource.value() ?? []; track s.id) {
+        <option [value]="s.id">{{ s.name }} · {{ s.registrationNumber }}</option>
+      }
+    </select>
+  </div>
+
+  @if (selectedStudentId()) {
+    @if (scheduleResource.isLoading()) {
+      <div class="tms-card state"><span class="spinner"></span> Loading schedule…</div>
+    } @else if (scheduleResource.error()) {
+      <div class="tms-card state error">
+        <span class="material-icons">cloud_off</span> Couldn’t load this schedule.
+      </div>
+    } @else if (scheduleResource.value()) {
+      @if (scheduleResource.value(); as schedule) {
+        @if (schedule.courses.length) {
+          <div class="grid">
+            @for (course of schedule.courses; track course.courseCode) {
+              <article class="tms-card course">
+                <span class="code-chip">{{ course.courseCode }}</span>
+                <h3>{{ course.title }}</h3>
+                <p class="meta tms-muted">
+                  <span class="material-icons">schedule</span> {{ course.schedule }}
+                </p>
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="tms-card state empty">
+            <span class="material-icons">event_busy</span>
+            This student is not enrolled in any courses yet.
+          </div>
+        }
+      }
+    }
+  } @else {
+    <div class="tms-card state empty">
+      <span class="material-icons">arrow_upward</span>
+      Choose a student above to get started.
+    </div>
+  }
+</div>

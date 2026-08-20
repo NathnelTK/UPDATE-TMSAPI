@@ -1,43 +1,79 @@
-.chart-container {
-  padding: 1.5rem;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  background: #0f172a;
-  color: #e2e8f0;
+:host {
+  display: block;
 }
 
-.chart-bars {
+.chart {
   display: flex;
-  gap: 2rem;
-  align-items: flex-end;
-  height: 200px;
-  padding: 1rem 0;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.bar {
-  width: 80px;
-  border-radius: 4px 4px 0 0;
+.chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.chart-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.total {
+  font-size: 0.82rem;
+}
+
+.bars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  align-items: end;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Fixed-height track the bar grows inside; keeps all three columns aligned. */
+.track {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  min-height: 20px;
+  width: 100%;
+  height: 180px;
+  background: var(--tms-surface-2);
+  border-radius: var(--tms-radius-md);
+  padding: 0.5rem;
 }
 
-.bar.approved {
-  background: #059669;
+.bar {
+  position: relative;
+  width: 60%;
+  max-width: 72px;
+  min-height: 6px;
+  border-radius: var(--tms-radius-sm) var(--tms-radius-sm) 0 0;
+  transition: height 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  /* Bars animate from the base up when the deferred chunk mounts. */
 }
-.bar.pending {
-  background: #d97706;
-}
-.bar.rejected {
-  background: #dc2626;
-}
-
-.chart-summary {
-  margin-top: 1rem;
+.bar .val {
+  position: absolute;
+  top: -1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 0.9rem;
-  color: #94a3b8;
+  font-weight: 700;
+  color: var(--tms-text);
+}
+
+.bar.approved { background: var(--tms-success); }
+.bar.pending  { background: var(--tms-warning); }
+.bar.rejected { background: var(--tms-danger); }
+
+.cat {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--tms-text-muted);
 }

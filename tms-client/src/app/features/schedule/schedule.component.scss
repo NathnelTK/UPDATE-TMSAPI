@@ -1,0 +1,93 @@
+:host {
+  display: block;
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+.page-head {
+  margin-bottom: 1.5rem;
+}
+.page-head h1 {
+  font-size: 1.6rem;
+  margin: 0 0 0.25rem;
+}
+.page-head p { margin: 0; }
+
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.9rem;
+  margin-bottom: 1.5rem;
+}
+.picker .lead {
+  color: var(--tms-text-faint);
+  font-size: 21px;
+}
+.picker select {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  padding: 0.85rem 0;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--tms-text);
+  cursor: pointer;
+  appearance: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.course {
+  padding: 1.25rem;
+}
+.code-chip {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--tms-primary);
+  background: var(--tms-primary-weak);
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--tms-radius-sm);
+  margin-bottom: 0.6rem;
+}
+.course h3 {
+  font-size: 1.05rem;
+  margin: 0 0 0.6rem;
+}
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.meta .material-icons { font-size: 17px; }
+
+.state {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.75rem;
+  color: var(--tms-text-muted);
+  justify-content: center;
+}
+.state.error { color: var(--tms-danger); }
+.state .material-icons { font-size: 22px; }
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--tms-border-strong);
+  border-top-color: var(--tms-primary);
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

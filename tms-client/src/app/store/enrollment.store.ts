@@ -14,7 +14,7 @@ import {
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, concatMap, tap, catchError, EMPTY } from 'rxjs';
 import { EnrollmentService } from '../services/enrollment.service';
-import { Enrollment } from '../models/enrollment.model';
+import { Enrollment, EnrollmentStatus } from '../models/enrollment.model';
 
 export const EnrollmentStore = signalStore(
   { providedIn: 'root' },
@@ -22,61 +22,85 @@ export const EnrollmentStore = signalStore(
   // withState: simple properties alongside the entity collection
   withState({ isLoading: false, error: null as string | null }),
 
-  // withEntities: O(1) ID-indexed dictionary — stores { ids: string[], entityMap: Record<string, Enrollment> }
-  // Lookups and updates by ID are instant (no array scanning).
+  // withEntities: O(1) ID-indexed dictionary keyed by the numeric enrollment id
+  // ({ ids: number[], entityMap: Record<number, Enrollment> }). selectId defaults
+  // to the entity's `id` field, which is now the numeric PK from the API.
   withEntities<Enrollment>(),
 
   // withComputed: read-only derived signals that update automatically
   withComputed((store) => ({
     pendingCount: computed(
-      () => store.entities().filter(e => e.status === 'Pending').length
+      () => store.entities().filter((e) => e.status === 'Pending').length,
     ),
+    approvedCount: computed(
+      () => store.entities().filter((e) => e.status === 'Approved').length,
+    ),
+    total: computed(() => store.entities().length),
   })),
 
   withMethods((store, api = inject(EnrollmentService)) => ({
-    // Loading Data
-    // concatMap processes one emission at a time in strict order.
-    // If loadEnrollments() is triggered twice quickly, concatMap waits
-    // for the first HTTP response before starting the second.
-    // switchMap would cancel the first request (data loss risk).
-    // mergeMap would run both in parallel (race condition risk).
+    // Loading Data — concatMap processes one emission at a time in strict order,
+    // so a rapid double-trigger waits for the first response instead of racing.
     loadEnrollments: rxMethod<void>(
       pipe(
         tap(() => patchState(store, { isLoading: true, error: null })),
         concatMap(() =>
           api.getAll().pipe(
-            tap(rows => patchState(store, setAllEntities(rows), { isLoading: false })),
-            catchError(err => {
-              patchState(store, { isLoading: false, error: err.message });
+            tap((rows) =>
+              patchState(store, setAllEntities(rows), { isLoading: false }),
+            ),
+            catchError((err) => {
+              patchState(store, {
+                isLoading: false,
+                error: err.error?.detail ?? err.message,
+              });
               return EMPTY; // EMPTY completes silently so the rxMethod pipeline survives
-            })
-          )
-        )
-      )
+            }),
+          ),
+        ),
+      ),
     ),
 
-    // Optimistic Approve
-    // Step 1: Instantly flip status to "Approved" in the store — every
-    //         component reading from the store sees the change immediately.
-    // Step 2: Send the approval to the server.
-    // Step 3: If the server rejects it, roll back the status to "Pending".
-    approveEnrollment: rxMethod<string>(
+    // Optimistic Approve — flip status to "Approved" instantly, call the server,
+    // roll back to "Pending" if it rejects. Every component reading the store
+    // (queue table + summary KPIs) reacts before the round-trip completes.
+    approveEnrollment: rxMethod<number>(
       pipe(
-        tap(id => {
-          // Optimistic update — UI reacts before the network round-trip completes
-          patchState(store, updateEntity({ id, changes: { status: 'Approved' } }));
-        }),
-        concatMap(id =>
+        tap((id) =>
+          patchState(store, updateEntity({ id, changes: { status: 'Approved' } })),
+        ),
+        concatMap((id) =>
           api.approve(id).pipe(
-            catchError(err => {
-              // Server said no — restore the previous state
+            catchError(() => {
               patchState(store, updateEntity({ id, changes: { status: 'Pending' } }));
-              patchState(store, { error: 'Server rejected the approval. Check enrollment constraints.' });
+              patchState(store, {
+                error: 'Server rejected the approval. Please sign in and try again.',
+              });
               return EMPTY;
-            })
-          )
-        )
-      )
+            }),
+          ),
+        ),
+      ),
     ),
-  }))
+
+    // Optimistic Reject — same pattern, restoring the prior status on failure.
+    rejectEnrollment: rxMethod<{ id: number; previous: EnrollmentStatus }>(
+      pipe(
+        tap(({ id }) =>
+          patchState(store, updateEntity({ id, changes: { status: 'Rejected' } })),
+        ),
+        concatMap(({ id, previous }) =>
+          api.reject(id).pipe(
+            catchError(() => {
+              patchState(store, updateEntity({ id, changes: { status: previous } }));
+              patchState(store, {
+                error: 'Server rejected the action. Please sign in and try again.',
+              });
+              return EMPTY;
+            }),
+          ),
+        ),
+      ),
+    ),
+  })),
 );

@@ -1,26 +1,36 @@
-<div class="card">
-  <h3>
-    <!-- [routerLink] builds the URL dynamically from course().id -->
+<article class="card">
+  <div class="card-top">
+    <span class="code-chip">{{ course().code }}</span>
+    <span
+      class="tms-badge"
+      [class.tms-badge--approved]="!isFull()"
+      [class.tms-badge--rejected]="isFull()"
+    >
+      {{ isFull() ? 'Full' : 'Open' }}
+    </span>
+  </div>
+
+  <h3 class="card-title">
     <a [routerLink]="['/courses', course().id]">{{ course().title }}</a>
-    ({{ course().code }})
   </h3>
 
-  <p>
-    Enrolled {{ course().enrollmentCount }} of {{ course().maxCapacity }} seats
-  </p>
+  <div class="capacity">
+    <div class="bar">
+      <div class="bar-fill" [class.bar-fill--full]="isFull()" [style.width.%]="fillPct()"></div>
+    </div>
+    <span class="cap-text tms-muted">
+      {{ course().enrollmentCount }} / {{ course().maxCapacity }} enrolled
+    </span>
+  </div>
 
-  <!-- [class.closed] — property binding: adds CSS class when course is full -->
-  <span
-    class="badge"
-    [class.closed]="course().enrollmentCount >= course().maxCapacity"
-  >
-    {{ course().enrollmentCount >= course().maxCapacity ? 'Full' : 'Accepting enrollments' }}
-  </span>
-
-  <button
-    (click)="enrollClicked.emit(course())"
-    [disabled]="course().enrollmentCount >= course().maxCapacity"
-  >
-    Enroll
-  </button>
-</div>
+  <div class="card-actions">
+    <a class="tms-btn tms-btn--ghost" [routerLink]="['/courses', course().id]">Details</a>
+    <button
+      class="tms-btn tms-btn--primary"
+      (click)="enrollClicked.emit(course())"
+      [disabled]="isFull()"
+    >
+      Enroll
+    </button>
+  </div>
+</article>

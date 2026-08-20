@@ -1,0 +1,97 @@
+<div class="auth">
+  <!-- --------------------------- Brand panel --------------------------- -->
+  <section class="brand-panel">
+    <div class="brand-inner">
+      <div class="brand-lockup">
+        <span class="brand-mark material-icons">school</span>
+        <span class="brand-name">TMS</span>
+      </div>
+      <h1 class="brand-headline">Training Management,<br />done properly.</h1>
+      <p class="brand-sub">
+        Enroll students, run the approval queue, and track capacity in real time —
+        all from one console.
+      </p>
+      <ul class="brand-points">
+        <li><span class="material-icons">verified</span> Secure JWT sign-in with refresh rotation</li>
+        <li><span class="material-icons">bolt</span> Live, optimistic enrollment workflow</li>
+        <li><span class="material-icons">insights</span> Instructor analytics at a glance</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ---------------------------- Form panel --------------------------- -->
+  <section class="form-panel">
+    <form class="card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <h2 class="title">Welcome back</h2>
+      <p class="subtitle">Sign in to your TMS account to continue.</p>
+
+      @if (error(); as msg) {
+        <div class="alert" role="alert">
+          <span class="material-icons">error_outline</span>
+          <span>{{ msg }}</span>
+        </div>
+      }
+
+      <label class="field">
+        <span class="field-label">Email</span>
+        <div class="input-wrap">
+          <span class="material-icons lead">mail</span>
+          <input
+            type="email"
+            formControlName="email"
+            autocomplete="username"
+            placeholder="you@tms.local"
+          />
+        </div>
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <span class="field-error">Enter a valid email address.</span>
+        }
+      </label>
+
+      <label class="field">
+        <span class="field-label">Password</span>
+        <div class="input-wrap">
+          <span class="material-icons lead">lock</span>
+          <input
+            [type]="showPassword() ? 'text' : 'password'"
+            formControlName="password"
+            autocomplete="current-password"
+            placeholder="••••••••••••"
+          />
+          <button
+            type="button"
+            class="reveal"
+            (click)="togglePassword()"
+            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+          >
+            <span class="material-icons">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+          </button>
+        </div>
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="field-error">Password is required.</span>
+        }
+      </label>
+
+      <button type="submit" class="tms-btn tms-btn--primary submit" [disabled]="loading()">
+        @if (loading()) {
+          <span class="spinner"></span> Signing in…
+        } @else {
+          Sign in
+        }
+      </button>
+
+      <div class="demo">
+        <span class="demo-label">Demo accounts</span>
+        <div class="demo-btns">
+          <button type="button" class="chip" (click)="fillDemo('admin')">
+            <span class="material-icons">shield_person</span> Admin
+          </button>
+          <button type="button" class="chip" (click)="fillDemo('student')">
+            <span class="material-icons">person</span> Student
+          </button>
+        </div>
+        <p class="demo-hint">Password for both: <code>Demo!Passw0rd2026</code></p>
+      </div>
+    </form>
+  </section>
+</div>

@@ -1,0 +1,252 @@
+@use '@angular/material' as mat;
+
+/* ============================================================================
+   TMS design system
+   ----------------------------------------------------------------------------
+   1. Angular Material 19 theme (mat.theme) — emits system tokens using the CSS
+      light-dark() function, so flipping `color-scheme` on <html> switches every
+      Material component (tables, form fields, buttons) between light and dark.
+   2. A --tms-* token layer for our own components (shell, cards, badges…).
+      Defined once for light (:root) and overridden for dark
+      (:root[data-theme="dark"]).
+   ========================================================================== */
+
+html {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$violet-palette,
+        tertiary: mat.$cyan-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ------------------------------- Tokens: light --------------------------- */
+:root {
+  --tms-bg: #f4f6fb;
+  --tms-bg-accent: #eef1f8;
+  --tms-surface: #ffffff;
+  --tms-surface-2: #f8fafc;
+  --tms-surface-hover: #f1f5f9;
+
+  --tms-text: #131a2a;
+  --tms-text-muted: #5a6579;
+  --tms-text-faint: #8b94a7;
+
+  --tms-border: #e4e8f0;
+  --tms-border-strong: #d3d9e6;
+
+  --tms-primary: #4f46e5;
+  --tms-primary-hover: #4338ca;
+  --tms-primary-contrast: #ffffff;
+  --tms-primary-weak: #eef0fe;
+
+  --tms-success: #0f9d63;
+  --tms-success-weak: #e4f7ee;
+  --tms-warning: #b7791f;
+  --tms-warning-weak: #fdf3e0;
+  --tms-danger: #dc2626;
+  --tms-danger-weak: #fdeaea;
+  --tms-info: #2563eb;
+  --tms-info-weak: #e7f0fe;
+
+  --tms-sidebar-bg: #131a2a;
+  --tms-sidebar-text: #c3cadb;
+  --tms-sidebar-text-strong: #ffffff;
+  --tms-sidebar-active-bg: rgba(255, 255, 255, 0.1);
+  --tms-sidebar-active-bar: #818cf8;
+
+  --tms-radius-sm: 8px;
+  --tms-radius-md: 12px;
+  --tms-radius-lg: 16px;
+  --tms-radius-pill: 999px;
+
+  --tms-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06),
+    0 1px 3px rgba(16, 24, 40, 0.08);
+  --tms-shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08),
+    0 2px 4px rgba(16, 24, 40, 0.04);
+  --tms-shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12),
+    0 4px 8px rgba(16, 24, 40, 0.06);
+
+  --tms-focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.35);
+
+  --tms-font: 'Roboto', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ------------------------------- Tokens: dark ---------------------------- */
+:root[data-theme='dark'] {
+  --tms-bg: #0d1220;
+  --tms-bg-accent: #111827;
+  --tms-surface: #161d2d;
+  --tms-surface-2: #1b2436;
+  --tms-surface-hover: #202b40;
+
+  --tms-text: #e8ecf5;
+  --tms-text-muted: #9aa4b8;
+  --tms-text-faint: #6b7590;
+
+  --tms-border: #263047;
+  --tms-border-strong: #33405c;
+
+  --tms-primary: #818cf8;
+  --tms-primary-hover: #a5b0ff;
+  --tms-primary-contrast: #0d1220;
+  --tms-primary-weak: #1f2540;
+
+  --tms-success: #34d399;
+  --tms-success-weak: #10241d;
+  --tms-warning: #fbbf24;
+  --tms-warning-weak: #2a2213;
+  --tms-danger: #f87171;
+  --tms-danger-weak: #2c1717;
+  --tms-info: #60a5fa;
+  --tms-info-weak: #14233d;
+
+  --tms-sidebar-bg: #0a0f1a;
+  --tms-sidebar-text: #97a2b8;
+  --tms-sidebar-text-strong: #ffffff;
+  --tms-sidebar-active-bg: rgba(129, 140, 248, 0.14);
+  --tms-sidebar-active-bar: #818cf8;
+
+  --tms-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --tms-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --tms-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+
+  --tms-focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.4);
+}
+
+/* --------------------------------- Base ---------------------------------- */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--tms-font);
+  background: var(--tms-bg);
+  color: var(--tms-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+h1, h2, h3, h4 {
+  color: var(--tms-text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.5rem;
+}
+
+a {
+  color: var(--tms-primary);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+/* Accessible focus ring for keyboard users on all interactive elements. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--tms-focus-ring);
+  border-radius: var(--tms-radius-sm);
+}
+
+/* Custom scrollbar that respects the theme. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tms-border-strong) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: var(--tms-border-strong);
+  border-radius: var(--tms-radius-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ----------------------------- Shared classes ---------------------------- */
+.tms-card {
+  background: var(--tms-surface);
+  border: 1px solid var(--tms-border);
+  border-radius: var(--tms-radius-lg);
+  box-shadow: var(--tms-shadow-sm);
+}
+
+/* Status badge — colour comes from a modifier class. */
+.tms-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--tms-radius-pill);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.tms-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tms-badge--pending { color: var(--tms-warning); background: var(--tms-warning-weak); }
+.tms-badge--approved { color: var(--tms-success); background: var(--tms-success-weak); }
+.tms-badge--rejected { color: var(--tms-danger); background: var(--tms-danger-weak); }
+
+/* Button system used across custom (non-Material) UI. */
+.tms-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.6rem 1.15rem;
+  border-radius: var(--tms-radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.05s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.tms-btn:active { transform: translateY(1px); }
+.tms-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.tms-btn--primary {
+  background: var(--tms-primary);
+  color: var(--tms-primary-contrast);
+}
+.tms-btn--primary:hover:not(:disabled) { background: var(--tms-primary-hover); }
+
+.tms-btn--ghost {
+  background: transparent;
+  color: var(--tms-text);
+  border-color: var(--tms-border-strong);
+}
+.tms-btn--ghost:hover:not(:disabled) { background: var(--tms-surface-hover); }
+
+.tms-btn--danger {
+  background: transparent;
+  color: var(--tms-danger);
+  border-color: color-mix(in srgb, var(--tms-danger) 40%, transparent);
+}
+.tms-btn--danger:hover:not(:disabled) { background: var(--tms-danger-weak); }
+
+/* Utility helpers. */
+.tms-muted { color: var(--tms-text-muted); }

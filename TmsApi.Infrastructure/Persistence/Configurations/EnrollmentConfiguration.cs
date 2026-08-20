@@ -26,6 +26,12 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
         builder.Property(e => e.IsArchived)
             .HasDefaultValue(false);               // Default: not archived
 
+        // Approval workflow status — stored as int with a DB default of Pending (0)
+        // so rows created before this column existed read back as Pending.
+        builder.Property(e => e.Status)
+            .HasDefaultValue(EnrollmentStatus.Pending)
+            .HasConversion<int>();
+
         // --- Foreign Key: Enrollment -> Student (many-to-one) ---
         builder.HasOne(e => e.Student)             // Each enrollment belongs to one student
             .WithMany(s => s.Enrollments)          // A student has many enrollments

@@ -1,9 +1,9 @@
 import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
-import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { routes } from './app.routes';
-import { credentialsInterceptor } from './interceptors/credentials.interceptor';
+import { authInterceptor } from './interceptors/auth.interceptor';
 import { errorInterceptor } from './interceptors/error.interceptor';
 
 export const appConfig: ApplicationConfig = {
@@ -12,21 +12,16 @@ export const appConfig: ApplicationConfig = {
     // unnecessary re-renders when multiple signals fire in quick succession.
     provideZoneChangeDetection({ eventCoalescing: true }),
     // withComponentInputBinding() lets URL params flow directly into @input()
-    // fields on routed components (used in Exercise 4 / course-detail).
+    // fields on routed components (used in course-detail / enrollment-form).
     provideRouter(routes, withComponentInputBinding()),
-    // M10 Session 2/3 — credentialsInterceptor attaches withCredentials:true so the
-    // HttpOnly auth cookie flows; errorInterceptor centralises RFC 7807 error
-    // handling (401 → /login); withXsrfConfiguration makes Angular read the
-    // XSRF-TOKEN cookie and echo it as X-XSRF-TOKEN on POST/PUT/DELETE.
-    provideHttpClient(
-      withInterceptors([credentialsInterceptor, errorInterceptor]),
-      withXsrfConfiguration({
-        cookieName: 'XSRF-TOKEN', // Cookie name set by the .NET server
-        headerName: 'X-XSRF-TOKEN', // Header name the .NET antiforgery service expects
-      }),
-    ),
-    // M9 Session 2 — Angular Material needs the animations package for sort
-    // arrows, paginator transitions, etc. The async provider lazy-loads it.
+    // M11 — JWT bearer auth. authInterceptor attaches `Authorization: Bearer`
+    // and transparently refreshes on 401; errorInterceptor centralises RFC 7807
+    // error surfacing. Order matters: auth runs first so a refreshed retry still
+    // passes back through error handling. (The old cookie/XSRF interceptors were
+    // retired when the API moved from HttpOnly cookies to bearer tokens.)
+    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+    // Angular Material needs the animations package for sort arrows, paginator
+    // transitions, etc. The async provider lazy-loads it.
     provideAnimationsAsync(),
   ],
 };
