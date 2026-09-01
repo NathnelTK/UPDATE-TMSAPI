@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Domain.Entities;
 using TmsApi.Infrastructure.Persistence;
@@ -71,6 +72,10 @@ public class AuthController(
 
     public record LoginRequest(string Email, string Password);
 
+    // --- M11 Session 3 - Exercise 7 Step 1: throttle login attempts ---
+    // 5 attempts/minute via the AuthLimiter fixed window; a 6th returns 429.
+    // Defence-in-depth alongside Identity's per-account lockout (423 Locked).
+    [EnableRateLimiting("AuthLimiter")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {

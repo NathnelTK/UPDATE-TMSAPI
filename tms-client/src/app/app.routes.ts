@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { ShellComponent } from './layout/shell.component';
 import { authGuard } from './guards/auth.guard';
+import { roleGuard } from './guards/role.guard';
 
 export const routes: Routes = [
   // Public sign-in page — rendered outside the authenticated shell.
@@ -59,6 +60,24 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/schedule/schedule.component').then(
             (m) => m.ScheduleComponent,
+          ),
+      },
+      {
+        // M11 Session 3 - Exercise 6: admin-only area, gated by roleGuard('Admin').
+        // Non-admins are redirected to /unauthorized by the guard before load.
+        path: 'admin/courses',
+        canActivate: [roleGuard('Admin')],
+        loadComponent: () =>
+          import('./features/admin-courses/admin-courses.component').then(
+            (m) => m.AdminCoursesComponent,
+          ),
+      },
+      {
+        // M11 Session 3 - Exercise 6: where roleGuard sends users who lack the role.
+        path: 'unauthorized',
+        loadComponent: () =>
+          import('./features/unauthorized/unauthorized.component').then(
+            (m) => m.UnauthorizedComponent,
           ),
       },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

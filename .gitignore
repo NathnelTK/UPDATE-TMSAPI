@@ -9,6 +9,7 @@ appsettings.Development.json
 appsettings.json
 launchSettings.json
 *.pdf
+*.docx
 pass
 .kiro/
 
@@ -16,3 +17,14 @@ pass
 tms-client/node_modules/
 tms-client/.angular/
 tms-client/dist/
+
+# Angular test / coverage output
+tms-client/coverage/
+tms-client/out-tsc/
+
+# Playwright (E2E) — never commit the saved session/token or run artifacts
+tms-client/playwright/.auth/
+tms-client/playwright-report/
+tms-client/test-results/
+tms-client/blob-report/
+tms-client/playwright/.cache/

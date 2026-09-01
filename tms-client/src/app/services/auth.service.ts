@@ -59,6 +59,16 @@ export class AuthService {
     return localStorage.getItem(ACCESS_KEY);
   }
 
+  /**
+   * M11 Session 3 - Exercise 6 Step 1: expose the raw access token for the HTTP
+   * interceptor. Provided as an explicit method (alongside the `accessToken`
+   * getter) to match the lab's AuthService contract. Reads from localStorage so
+   * the token survives a page refresh.
+   */
+  getAccessToken(): string | null {
+    return this.accessToken;
+  }
+
   private get refreshTokenValue(): string | null {
     return localStorage.getItem(REFRESH_KEY);
   }

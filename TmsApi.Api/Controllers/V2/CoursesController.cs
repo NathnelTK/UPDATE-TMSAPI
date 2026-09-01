@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Application.Common;
@@ -20,7 +21,10 @@ namespace TmsApi.Api.Controllers.V2;
 [ApiController]
 [Route("api/v{version:apiVersion}/courses")]
 [ApiVersion("2.0")]
-public class CoursesController(ICachedCourseService cachedService, TmsDbContext context) : ControllerBase
+public class CoursesController(
+    ICachedCourseService cachedService,
+    TmsDbContext context,
+    IAuthorizationService authorizationService) : ControllerBase
 {
     /// <summary>
     /// GET /api/v2/courses - paginated list with data/meta/links envelope.
@@ -109,6 +113,15 @@ public class CoursesController(ICachedCourseService cachedService, TmsDbContext 
     /// <summary>
     /// PUT /api/v2/courses/{id} - update a course (triggers cache invalidation).
     /// </summary>
+    // --- M11 Session 3 - Exercise 5 Step 4: enforce resource-based authorization ---
+    // Role gate first (Instructor or Admin), then a per-resource check: the
+    // "CanEditCourse" policy lets Admins edit any course but restricts Instructors
+    // to courses they lead (Course.InstructorId == their user id). A caller who
+    // clears the role gate but fails ownership gets 403 Forbidden.
+    // NOTE (deviation from the lab): the role attribute is applied to THIS action
+    // only, not the whole controller — GET stays open to any signed-in user so the
+    // Student role can still browse courses, which a class-level attribute would break.
+    [Authorize(Roles = "Instructor,Admin")]
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateCourse(
         int id,
@@ -118,6 +131,10 @@ public class CoursesController(ICachedCourseService cachedService, TmsDbContext 
         var course = await context.Courses.FindAsync([id], ct);
         if (course is null)
             return NotFound();
+
+        var authResult = await authorizationService.AuthorizeAsync(User, course, "CanEditCourse");
+        if (!authResult.Succeeded)
+            return Forbid();
 
         course.Title = request.Title;
         await context.SaveChangesAsync(ct);

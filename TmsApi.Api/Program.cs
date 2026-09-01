@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -33,6 +34,7 @@ using TmsApi.Infrastructure.Persistence;
 using TmsApi.Api.Hubs;
 using TmsApi.Api.Middleware;
 using TmsApi.Api.Legacy;
+using TmsApi.Api.Authorization;
 using TmsApi.Api.RateLimiting;
 using TmsApi.Api.Transcripts;
 using TmsApi.Domain.Entities;
@@ -161,7 +163,16 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+// --- M11 Session 3 - Exercise 5 Step 3: resource-based authorization policy ---
+// "CanEditCourse" is decided per-course by CourseInstructorHandler: Admins may edit
+// any course; Instructors only courses whose InstructorId matches their user id.
+// AddAuthorizationBuilder also registers the core authorization services (replacing
+// the previous bare AddAuthorization() call).
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("CanEditCourse", policy =>
+        policy.Requirements.Add(new CourseInstructorRequirement()));
+
+builder.Services.AddSingleton<IAuthorizationHandler, CourseInstructorHandler>();
 
 // --- M11 Session 1 - Exercise 2: ASP.NET Core Identity Core ---
 // AddIdentityCore wires UserManager<TmsUser>/RoleManager (no cookie SignInManager —
@@ -385,6 +396,18 @@ builder.Services.AddRateLimiter(options =>
         }, ct);
     };
 
+    // --- M11 Session 3 - Exercise 7 Step 1: fixed-window limiter for auth endpoints ---
+    // Caps login attempts at 5 per minute (per the lab). Attached to AuthController.Login
+    // via [EnableRateLimiting("AuthLimiter")]; the 6th attempt in the window returns 429,
+    // shaped by the OnRejected handler above as RFC 9457 problem+json. Defence-in-depth
+    // alongside Identity's per-account lockout (423 Locked).
+    options.AddFixedWindowLimiter("AuthLimiter", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+
     // Concurrency limiter for transcript endpoint
     options.AddConcurrencyLimiter("transcripts", opt =>
     {
@@ -403,6 +426,34 @@ builder.Services.AddAntiforgery(options =>
 });
 
 var app = builder.Build();
+
+// --- M11 Session 3 - Exercise 7 Step 2: security response headers ---
+// Registered first so every response — success or error — carries safe browser
+// defaults: no MIME sniffing, no framing (clickjacking), minimal referrer leakage,
+// and a locked-down Content-Security-Policy. Header values are assigned (not
+// appended) so they never duplicate if the pipeline is re-entered.
+// DEVIATION FROM THE LAB: the strict CSP (script-src 'self') would block the Scalar
+// API explorer / OpenAPI UI, which pull assets from a CDN in Development. The CSP is
+// therefore relaxed only for the /scalar and /openapi paths in Development, so the dev
+// tooling keeps working without weakening the headers that ship to production.
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+
+    var path = context.Request.Path;
+    var isDevExplorer = app.Environment.IsDevelopment()
+        && (path.StartsWithSegments("/scalar") || path.StartsWithSegments("/openapi"));
+    if (!isDevExplorer)
+    {
+        headers["Content-Security-Policy"] =
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';";
+    }
+
+    await next();
+});
 
 // --- M7 Session 4 - Exercise 9: Health probe endpoints ---
 // /health/live  — liveness: orchestrator restart signal. Never depends on external services.

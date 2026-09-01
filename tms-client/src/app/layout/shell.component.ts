@@ -38,6 +38,8 @@ export class ShellComponent {
   ];
 
   readonly user = this.auth.currentUser;
+  // M11 Session 3 - Exercise 6 Step 3: drives the conditional Admin nav entry.
+  readonly isAdmin = computed(() => this.auth.hasRole('Admin'));
   readonly isDark = computed(() => this.theme.theme() === 'dark');
   readonly pageTitle = signal(this.titleFor(this.router.url));
   readonly drawerOpen = signal(false);
@@ -78,6 +80,8 @@ export class ShellComponent {
     const match = this.nav.find((n) => url.startsWith(n.path));
     if (match) return match.label;
     if (url.startsWith('/courses')) return 'Course Detail';
+    if (url.startsWith('/admin')) return 'Administration';
+    if (url.startsWith('/unauthorized')) return 'Access denied';
     return 'Dashboard';
   }
 }
