@@ -40,18 +40,23 @@ public static class DataSeeder
     ];
 
     /// <summary>
-    /// Seed the database with 25 deterministic courses.
-    /// Idempotent: skips if courses already exist.
+    /// Seed the database with the deterministic catalog.
+    /// Idempotent: existing course codes are preserved and only missing rows are added.
     /// </summary>
     public static async Task SeedAsync(TmsDbContext context, CancellationToken ct = default)
     {
         await context.Database.MigrateAsync(ct);
 
-        if (await context.Courses.AnyAsync(ct))
-            return;
+        var existingCodes = await context.Courses
+            .AsNoTracking()
+            .Select(course => course.Code)
+            .ToHashSetAsync(ct);
 
         foreach (var (code, title, maxCapacity) in Courses)
         {
+            if (existingCodes.Contains(code))
+                continue;
+
             context.Courses.Add(new Course
             {
                 Code = code,

@@ -1,6 +1,6 @@
 <article class="card">
   <div class="card-top">
-    <span class="code-chip">{{ course().code }}</span>
+    <div class="code-meta"><span class="code-chip">{{ course().code }}</span><span class="level">CORE</span></div>
     <span
       class="tms-badge"
       [class.tms-badge--approved]="!isFull()"
@@ -13,6 +13,8 @@
   <h3 class="card-title">
     <a [routerLink]="['/courses', course().id]">{{ course().title }}</a>
   </h3>
+  <p class="card-description">Practical skills, guided projects, and outcomes your team can use immediately.</p>
+  <div class="card-meta"><span><span class="material-icons">schedule</span> 6 weeks</span><span><span class="material-icons">signal_cellular_alt</span> Intermediate</span></div>
 
   <div class="capacity">
     <div class="bar">

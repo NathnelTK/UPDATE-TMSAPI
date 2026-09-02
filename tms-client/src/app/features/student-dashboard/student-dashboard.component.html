@@ -1,7 +1,16 @@
-<section class="welcome">
-  <div>
-    <h1>Welcome back{{ user() ? ', ' + user()!.displayName : '' }} 👋</h1>
-    <p class="tms-muted">Here’s the current training catalog and live capacity.</p>
+<section class="hero">
+  <div class="hero-copy">
+    <span class="eyebrow">LEARNING OPERATIONS / 2026</span>
+    <h1>Welcome back{{ user() ? ', ' + user()!.displayName : '' }}</h1>
+    <p>Build the capabilities your team needs next. Your learning workspace is ready.</p>
+    <div class="hero-actions">
+      <a class="tms-btn tms-btn--primary" routerLink="/enroll"><span class="material-icons">add_task</span> Start an enrollment</a>
+      <a class="text-action" routerLink="/schedule">View my schedule <span class="material-icons">arrow_forward</span></a>
+    </div>
+  </div>
+  <div class="progress-card">
+    <div class="progress-ring"><strong>{{ completionRate() }}%</strong><span>catalog</span></div>
+    <div><span class="progress-label">Learning momentum</span><strong>On track</strong><small>2 courses recommended this month</small></div>
   </div>
 </section>
 
@@ -10,7 +19,7 @@
     <span class="kpi-icon i-courses material-icons">library_books</span>
     <div>
       <span class="kpi-value">{{ totalCourses() }}</span>
-      <span class="kpi-label">Total courses</span>
+     <span class="kpi-label">Available courses</span>
     </div>
   </div>
   <div class="kpi tms-card">
@@ -29,9 +38,29 @@
   </div>
 </section>
 
+<section class="workspace-grid">
+  <article class="tms-card next-up">
+    <div class="section-heading"><div><span class="eyebrow">YOUR NEXT STEP</span><h2>Continue learning</h2></div><span class="material-icons heading-icon">auto_awesome</span></div>
+    <div class="next-item"><div class="course-avatar">TS</div><div class="next-info"><strong>TypeScript Essentials</strong><span>Module 4 of 8 · 38 min remaining</span><div class="mini-progress"><span></span></div></div><span class="material-icons play">play_circle</span></div>
+    <div class="next-item"><div class="course-avatar course-avatar--green">GI</div><div class="next-info"><strong>Git and Collaborative Workflows</strong><span>Next session · Tomorrow, 10:00 AM</span></div><span class="material-icons muted-icon">event</span></div>
+  </article>
+  <article class="tms-card activity-card">
+    <div class="section-heading"><div><span class="eyebrow">TEAM ACTIVITY</span><h2>Workspace pulse</h2></div><span class="live-dot">Live</span></div>
+    <div class="activity-row"><span class="material-icons activity-icon purple">groups</span><div><strong>24 learners active</strong><span>Across 8 learning tracks</span></div></div>
+    <div class="activity-row"><span class="material-icons activity-icon orange">verified</span><div><strong>12 certifications earned</strong><span>In the last 30 days</span></div></div>
+  </article>
+</section>
+
 <section class="catalog">
   <div class="catalog-head">
-    <h2>Course catalog</h2>
+    <div><span class="eyebrow">EXPLORE PROGRAMS</span><h2>Course catalog</h2></div>
+    <span class="catalog-count">{{ filteredCourses().length }} results</span>
+  </div>
+  <div class="catalog-tools">
+    <label class="search-box"><span class="material-icons">search</span><input [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" placeholder="Search courses or codes" aria-label="Search courses or codes" /><kbd>/</kbd></label>
+    <div class="filters" role="list" aria-label="Course tracks">
+      @for (track of tracks(); track track) { <button class="filter" [class.active]="selectedTrack() === track" (click)="setTrack(track)">{{ track }}</button> }
+    </div>
   </div>
 
   @if (coursesResource.isLoading()) {
@@ -50,7 +79,7 @@
     </div>
   } @else {
     <div class="grid">
-      @for (course of coursesResource.value()!; track course.id) {
+      @for (course of filteredCourses(); track course.id) {
         <tms-course-card [course]="course" (enrollClicked)="handleEnroll($event)" />
       } @empty {
         <div class="tms-card state">No courses are available this term.</div>
