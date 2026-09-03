@@ -10,3 +10,5 @@ public record StudentListItemDto(
     string RegistrationNumber,
     bool IsActive
 );
+
+public record CurrentStudentDto(int Id, string Name, string RegistrationNumber, decimal GPA, bool IsActive);

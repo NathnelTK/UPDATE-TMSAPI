@@ -1,0 +1,7 @@
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { LearningService } from '../../services/learning.service';
+import { switchMap } from 'rxjs';
+
+@Component({ selector: 'app-student-enrollments', standalone: true, changeDetection: ChangeDetectionStrategy.OnPush, template: `<section class="page-stack"><div class="page-heading"><span class="eyebrow">MY TRAINING</span><h2>My enrollments</h2><p>Track the training requests and courses attached to your student record.</p></div>@if (items.isLoading()) { <div class="tms-card state">Loading your enrollments...</div> } @else if (items.error()) { <div class="tms-card state error">Unable to load your enrollments.</div> } @else { <div class="record-list">@for (row of items.value()?.courses ?? []; track row.courseCode) { <article class="tms-card record-row"><div><strong>{{ row.title }}</strong><span>{{ row.courseCode }}</span></div><b class="tms-badge tms-badge--approved">Enrolled</b></article>} @empty { <div class="tms-card state">You do not have any enrolled courses yet. Visit the course catalog to begin.</div> }</div>}</section>` })
+export class StudentEnrollmentsComponent { private readonly service = inject(LearningService); readonly items = rxResource({ loader: () => this.service.getCurrentStudent().pipe(switchMap((student) => this.service.getMySchedule(student.id))) }); }

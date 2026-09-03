@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using TmsApi.Api.Transcripts;
 
 namespace TmsApi.Api.Controllers;
@@ -14,6 +15,7 @@ public class TranscriptsController(StatusStore statusStore, ILogger<TranscriptsC
     : ControllerBase
 {
     [HttpPost]
+    [Authorize]
     [EnableRateLimiting("transcripts")]
     public IActionResult RequestTranscript(
         [FromBody] TranscriptRequestDto request,
@@ -62,6 +64,7 @@ public class TranscriptsController(StatusStore statusStore, ILogger<TranscriptsC
     }
 
     [HttpGet("{reportId}/status")]
+    [Authorize]
     public IActionResult GetStatus(string reportId)
     {
         var transcriptRequest = statusStore.GetRequestById(reportId);

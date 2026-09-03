@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TmsApi.Application.DTOs;
@@ -19,6 +20,7 @@ public class StudentsController(TmsDbContext context) : ControllerBase
     /// <summary>
     /// GET /api/v2/students — active (non-deleted) students, ordered by name.
     /// </summary>
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetStudents(CancellationToken ct)
     {
@@ -31,5 +33,18 @@ public class StudentsController(TmsDbContext context) : ControllerBase
             .ToListAsync(ct);
 
         return Ok(students);
+    }
+
+    [Authorize(Roles = "Student")]
+    [HttpGet("me")]
+    public async Task<ActionResult<CurrentStudentDto>> GetCurrentStudent(CancellationToken ct)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null) return Unauthorized();
+        var student = await context.Students.AsNoTracking()
+            .Where(s => s.UserId == userId && !s.IsDeleted)
+            .Select(s => new CurrentStudentDto(s.Id, s.Name, s.RegistrationNumber, s.GPA, s.IsActive))
+            .FirstOrDefaultAsync(ct);
+        return student is null ? NotFound() : Ok(student);
     }
 }

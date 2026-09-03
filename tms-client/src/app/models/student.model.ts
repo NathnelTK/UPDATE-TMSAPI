@@ -5,3 +5,11 @@ export interface Student {
   registrationNumber: string;
   isActive: boolean;
 }
+
+export interface CurrentStudent {
+  id: number;
+  name: string;
+  registrationNumber: string;
+  gpa: number;
+  isActive: boolean;
+}

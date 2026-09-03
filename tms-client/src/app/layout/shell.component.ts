@@ -29,17 +29,29 @@ export class ShellComponent {
   private router = inject(Router);
   private theme = inject(ThemeService);
 
-  readonly nav: NavItem[] = [
+  readonly studentNav: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { path: '/enroll', label: 'Enroll Student', icon: 'person_add' },
-    { path: '/enrollments', label: 'Enrollment Queue', icon: 'fact_check' },
-    { path: '/instructor-dashboard', label: 'Instructor', icon: 'insights' },
+    { path: '/courses', label: 'Course Catalog', icon: 'menu_book' },
+    { path: '/enrollments', label: 'My Enrollments', icon: 'fact_check' },
     { path: '/schedule', label: 'My Schedule', icon: 'calendar_month' },
+    { path: '/attendance', label: 'Attendance', icon: 'event_available' },
+    { path: '/grades', label: 'Grades', icon: 'grade' },
+    { path: '/grants', label: 'Grants', icon: 'account_balance' },
+    { path: '/notifications', label: 'Notifications', icon: 'notifications' },
+  ];
+  readonly adminNav: NavItem[] = [
+    { path: '/dashboard', label: 'Overview', icon: 'dashboard' },
+    { path: '/admin/courses', label: 'Courses', icon: 'menu_book' },
+    { path: '/admin/enrollments', label: 'Enrollment Requests', icon: 'fact_check' },
+    { path: '/admin/attendance', label: 'Attendance', icon: 'event_available' },
+    { path: '/admin/grades', label: 'Assessments & Grades', icon: 'grade' },
+    { path: '/admin/grants', label: 'Grant Applications', icon: 'account_balance' },
   ];
 
   readonly user = this.auth.currentUser;
   // M11 Session 3 - Exercise 6 Step 3: drives the conditional Admin nav entry.
   readonly isAdmin = computed(() => this.auth.hasRole('Admin'));
+  readonly visibleNav = computed(() => this.isAdmin() ? this.adminNav : this.studentNav);
   readonly isDark = computed(() => this.theme.theme() === 'dark');
   readonly pageTitle = signal(this.titleFor(this.router.url));
   readonly drawerOpen = signal(false);
@@ -77,7 +89,7 @@ export class ShellComponent {
   }
 
   private titleFor(url: string): string {
-    const match = this.nav.find((n) => url.startsWith(n.path));
+    const match = [...this.studentNav, ...this.adminNav].find((n) => url.startsWith(n.path));
     if (match) return match.label;
     if (url.startsWith('/courses')) return 'Course Detail';
     if (url.startsWith('/admin')) return 'Administration';

@@ -1,12 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { RouterLink } from '@angular/router';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { CourseCardComponent } from '../../ui/course-card/course-card.component';
 import { Course } from '../../models/course.model';
 import { CourseService } from '../../services/course.service';
 import { AuthService } from '../../services/auth.service';
+import { LearningService } from '../../services/learning.service';
+import { of, Observable, switchMap } from 'rxjs';
+import { LearningSummary } from '../../models/learning.model';
 
 /**
  * Dashboard / course catalog. Loads the live V2 course list, shows a few
@@ -17,14 +20,15 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-student-dashboard',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CourseCardComponent, FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, DecimalPipe],
   templateUrl: './student-dashboard.component.html',
   styleUrl: './student-dashboard.component.scss',
 })
 export class StudentDashboardComponent {
   private api = inject(CourseService);
-  private auth = inject(AuthService);
+  protected auth = inject(AuthService);
   private router = inject(Router);
+  private learning = inject(LearningService);
 
   user = this.auth.currentUser;
 
@@ -33,6 +37,14 @@ export class StudentDashboardComponent {
   coursesResource = rxResource({
     loader: () => this.api.getAll(),
   });
+
+  studentResource = rxResource({ loader: () => this.learning.getCurrentStudent() });
+  summaryResource = rxResource({
+    loader: (): Observable<LearningSummary> => this.learning.getCurrentStudent().pipe(
+      switchMap((student) => this.learning.getSummary(student.id)),
+    ),
+  });
+  adminResource = rxResource({ loader: () => this.learning.getAdminDashboard() });
 
   private courses = computed<Course[]>(() => this.coursesResource.value() ?? []);
 
@@ -65,7 +77,7 @@ export class StudentDashboardComponent {
     this.courses().reduce((sum, c) => sum + Math.max(0, c.maxCapacity - c.enrollmentCount), 0),
   );
 
-  completionRate = computed(() => Math.min(100, Math.round((this.courses().length / 25) * 100)));
+  completionRate = computed(() => this.summaryResource.value()?.attendancePercentage ?? 0);
 
   setTrack(track: string): void {
     this.selectedTrack.set(track);

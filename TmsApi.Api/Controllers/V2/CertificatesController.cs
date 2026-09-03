@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TmsApi.Application.Interfaces;
 
@@ -16,6 +17,7 @@ public sealed class CertificatesController(ICertificateService certificates) : C
     public sealed record IssueRequest(int StudentId, string CourseCode);
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Issue([FromBody] IssueRequest req, CancellationToken ct)
     {
         try

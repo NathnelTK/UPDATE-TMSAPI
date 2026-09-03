@@ -45,7 +45,10 @@ public class CachedCourseService(
                         course.Code,
                         course.Title,
                         course.MaxCapacity,
-                        course.Enrollments.Count);
+                        course.Enrollments.Count, course.Description, course.Category,
+                        course.Duration, course.MinimumRequirements, course.Prerequisites,
+                        course.StartDate, course.EndDate, course.EnrollmentStartDate,
+                        course.EnrollmentEndDate, course.Status);
             },
             tags: [CacheKeys.CoursesTag],
             cancellationToken: ct);
@@ -85,7 +88,9 @@ public class CachedCourseService(
                     c.Code,
                     c.Title,
                     c.MaxCapacity,
-                    c.Enrollments.Count)).ToList();
+                     c.Enrollments.Count, c.Description, c.Category, c.Duration,
+                     c.MinimumRequirements, c.Prerequisites, c.StartDate, c.EndDate,
+                     c.EnrollmentStartDate, c.EnrollmentEndDate, c.Status)).ToList();
             },
             tags: [CacheKeys.CoursesTag],
             cancellationToken: ct);
@@ -123,7 +128,9 @@ public class CachedCourseService(
                         c.Code,
                         c.Title,
                         c.MaxCapacity,
-                        c.Enrollments.Count))
+                         c.Enrollments.Count, c.Description, c.Category, c.Duration,
+                         c.MinimumRequirements, c.Prerequisites, c.StartDate, c.EndDate,
+                         c.EnrollmentStartDate, c.EnrollmentEndDate, c.Status))
                     .FirstOrDefaultAsync(token);
 
                 return course;

@@ -1,6 +1,6 @@
 <div class="page">
-  <a routerLink="/dashboard" class="back-link">
-    <span class="material-icons">arrow_back</span> Back to catalog
+  <a routerLink="/courses" class="back-link">
+    <span class="material-icons">arrow_back</span> Back to course catalog
   </a>
 
   @if (courseResource.isLoading()) {
@@ -32,11 +32,13 @@
           </span>
         </header>
 
-        <section class="capacity">
+         <p class="detail-description">{{ course.description }}</p>
+         <div class="detail-facts"><div><small>Category</small><strong>{{ course.category }}</strong></div><div><small>Duration</small><strong>{{ course.duration }}</strong></div><div><small>Prerequisites</small><strong>{{ course.prerequisites }}</strong></div><div><small>Requirements</small><strong>{{ course.minimumRequirements }}</strong></div></div>
+         <section class="capacity">
           <div class="capacity-top">
             <span class="tms-muted">Capacity</span>
             <span class="capacity-fig">
-              {{ course.enrollmentCount }} / {{ course.maxCapacity }} enrolled
+             {{ seatsLeft() }} seats available of {{ course.maxCapacity }}
             </span>
           </div>
           <div class="bar">
@@ -57,7 +59,7 @@
             [queryParams]="{ courseCode: course.code }"
           >
             <span class="material-icons">person_add</span>
-            {{ isFull() ? 'Course is full' : 'Enroll a student' }}
+             {{ isFull() ? 'Course is full' : 'Request enrollment' }}
           </a>
         </footer>
       </article>

@@ -43,6 +43,19 @@ using TmsApi.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Keep secrets out of source control while accepting the existing local config name.
+// Environment variables take precedence, so local PostgreSQL can be configured with
+// ConnectionStrings__TmsDatabase without editing a tracked file.
+var tmsConnectionString = builder.Configuration.GetConnectionString("TmsDatabase")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? Environment.GetEnvironmentVariable("TMS_DATABASE_CONNECTION");
+if (string.IsNullOrWhiteSpace(tmsConnectionString))
+{
+    throw new InvalidOperationException(
+        "No PostgreSQL connection string configured. Set ConnectionStrings:TmsDatabase " +
+        "or TMS_DATABASE_CONNECTION before starting the API.");
+}
+
 // --- M10 Session 1 - Exercise 1: Named CORS policy for the Angular client ---
 // The Angular app on localhost:4200 is a different origin from the API, so the
 // browser blocks cross-origin XHR unless the server grants explicit permission.
@@ -104,7 +117,7 @@ builder.Services.AddOpenTelemetry()
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy("alive"), tags: ["live"])
     .AddNpgSql(
-        connectionString: builder.Configuration.GetConnectionString("TmsDatabase")!,
+         connectionString: tmsConnectionString,
         name: "postgres",
         tags: ["ready"]);
 
@@ -260,7 +273,7 @@ builder.Host.UseDefaultServiceProvider(options =>
 
 // --- M5 Lab Session 1: Register TmsDbContext with PostgreSQL and SQL Logging ---
 builder.Services.AddDbContext<TmsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("TmsDatabase"))
+     options.UseNpgsql(tmsConnectionString)
         .LogTo(Console.WriteLine, LogLevel.Information)          // Log SQL to output window
         .EnableSensitiveDataLogging());                          // Show parameters in query logs (dev only)
 
@@ -484,7 +497,13 @@ app.UseStatusCodePages();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
-app.UseHttpsRedirection();
+// The Angular development server calls the explicit HTTP development port. HTTPS
+// redirection before CORS makes browser OPTIONS preflight requests fail because
+// browsers do not follow redirects for preflight. Production still redirects.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseRouting();
 app.UseCors("TmsClient"); // Must be after UseRouting, before UseAuthentication (M10 S1 Ex1)
 app.UseAuthentication();
@@ -640,13 +659,15 @@ if (app.Environment.IsDevelopment() && !string.Equals(skipMigrate, "true", Strin
     using var scope = app.Services.CreateScope();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<TmsUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var context = scope.ServiceProvider.GetRequiredService<TmsDbContext>();
 
-    async Task EnsureUserAsync(string email, string firstName, string lastName, string role)
+    async Task<TmsUser> EnsureUserAsync(string email, string firstName, string lastName, string role)
     {
         if (!await roleManager.RoleExistsAsync(role))
             await roleManager.CreateAsync(new IdentityRole(role));
 
-        if (await userManager.FindByEmailAsync(email) is null)
+        var existing = await userManager.FindByEmailAsync(email);
+        if (existing is not null) return existing;
         {
             var user = new TmsUser
             {
@@ -659,11 +680,19 @@ if (app.Environment.IsDevelopment() && !string.Equals(skipMigrate, "true", Strin
             var result = await userManager.CreateAsync(user, "Demo!Passw0rd2026");
             if (result.Succeeded)
                 await userManager.AddToRoleAsync(user, role);
+            return user;
         }
+        throw new InvalidOperationException($"Could not seed demo user {email}.");
     }
 
     await EnsureUserAsync("admin@tms.local", "Admin", "User", "Admin");
-    await EnsureUserAsync("student@tms.local", "Liya", "Kebede", "Student");
+    var demoStudentUser = await EnsureUserAsync("student@tms.local", "Liya", "Kebede", "Student");
+    var demoStudent = await context.Students.FirstOrDefaultAsync(s => s.RegistrationNumber == "TMS-2026-0001");
+    if (demoStudent is not null && demoStudent.UserId is null)
+    {
+        demoStudent.UserId = demoStudentUser.Id;
+        await context.SaveChangesAsync();
+    }
 }
 
 app.Run();

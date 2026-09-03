@@ -1,6 +1,6 @@
 <article class="card">
   <div class="card-top">
-    <div class="code-meta"><span class="code-chip">{{ course().code }}</span><span class="level">CORE</span></div>
+    <div class="code-meta"><span class="code-chip">{{ course().code }}</span><span class="level">{{ course().category }}</span></div>
     <span
       class="tms-badge"
       [class.tms-badge--approved]="!isFull()"
@@ -13,15 +13,15 @@
   <h3 class="card-title">
     <a [routerLink]="['/courses', course().id]">{{ course().title }}</a>
   </h3>
-  <p class="card-description">Practical skills, guided projects, and outcomes your team can use immediately.</p>
-  <div class="card-meta"><span><span class="material-icons">schedule</span> 6 weeks</span><span><span class="material-icons">signal_cellular_alt</span> Intermediate</span></div>
+  <p class="card-description">{{ course().description }}</p>
+  <div class="card-meta"><span><span class="material-icons">schedule</span> {{ course().duration }}</span><span><span class="material-icons">event_available</span> {{ course().status }}</span></div>
 
   <div class="capacity">
     <div class="bar">
       <div class="bar-fill" [class.bar-fill--full]="isFull()" [style.width.%]="fillPct()"></div>
     </div>
     <span class="cap-text tms-muted">
-      {{ course().enrollmentCount }} / {{ course().maxCapacity }} enrolled
+       {{ course().maxCapacity - course().enrollmentCount }} seats available
     </span>
   </div>
 

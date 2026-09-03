@@ -21,4 +21,7 @@ public record CreateCourseRequest
 
     [Range(1, 200, ErrorMessage = "MaxCapacity must be between 1 and 200.")]
     public int MaxCapacity { get; init; } = 30;
+    public string Description { get; init; } = string.Empty;
+    public string Category { get; init; } = "General Skills";
+    public string Duration { get; init; } = "8 weeks";
 }

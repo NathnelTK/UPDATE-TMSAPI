@@ -27,7 +27,10 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger) 
                 c.Code,
                 c.Title,
                 c.MaxCapacity,
-                c.Enrollments.Count))
+                c.Enrollments.Count,
+                c.Description, c.Category, c.Duration, c.MinimumRequirements,
+                c.Prerequisites, c.StartDate, c.EndDate, c.EnrollmentStartDate,
+                c.EnrollmentEndDate, c.Status))
             .FirstOrDefaultAsync(ct);
 
     /// <summary>
@@ -41,7 +44,10 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger) 
         {
             Code = request.Code,
             Title = request.Title,
-            MaxCapacity = request.MaxCapacity
+            MaxCapacity = request.MaxCapacity,
+            Description = request.Description,
+            Category = request.Category,
+            Duration = request.Duration
         };
 
         context.Courses.Add(course);
@@ -107,7 +113,10 @@ public class CourseService(TmsDbContext context, ILogger<CourseService> logger) 
                 c.Code,
                 c.Title,
                 c.MaxCapacity,
-                c.Enrollments.Count))
+                c.Enrollments.Count,
+                c.Description, c.Category, c.Duration, c.MinimumRequirements,
+                c.Prerequisites, c.StartDate, c.EndDate, c.EnrollmentStartDate,
+                c.EnrollmentEndDate, c.Status))
             .ToListAsync(ct);
 
         // Step 6: Return paginated response

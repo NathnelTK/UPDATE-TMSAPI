@@ -13,9 +13,15 @@ import { AuthService } from '../services/auth.service';
  * Usage: `canActivate: [roleGuard('Admin')]`.
  */
 export const roleGuard = (requiredRole: string): CanActivateFn => {
-  return () => {
+  return (_route, state) => {
     const auth = inject(AuthService);
     const router = inject(Router);
+
+    if (!auth.isAuthenticated()) {
+      return router.createUrlTree(['/login'], {
+        queryParams: { returnUrl: state.url },
+      });
+    }
 
     if (auth.hasRole(requiredRole)) {
       return true;

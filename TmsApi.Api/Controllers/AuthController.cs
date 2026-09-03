@@ -38,6 +38,9 @@ public class AuthController(
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
+        // Public registration can create learners only. Privileged roles are
+        // provisioned by an administrator or the development demo seeder.
+        const string role = "Student";
         var existingUser = await userManager.FindByEmailAsync(request.Email);
         if (existingUser != null)
         {
@@ -61,12 +64,12 @@ public class AuthController(
         }
 
         // Ensure the requested role exists before assigning it.
-        if (!await roleManager.RoleExistsAsync(request.Role))
+        if (!await roleManager.RoleExistsAsync(role))
         {
-            await roleManager.CreateAsync(new IdentityRole(request.Role));
+            await roleManager.CreateAsync(new IdentityRole(role));
         }
 
-        await userManager.AddToRoleAsync(user, request.Role);
+        await userManager.AddToRoleAsync(user, role);
         return Ok(new { message = "Registration successful." });
     }
 

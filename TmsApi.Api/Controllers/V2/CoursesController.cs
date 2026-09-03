@@ -105,7 +105,7 @@ public class CoursesController(
             links = new[]
             {
                 new LinkDto(Url.Action(nameof(GetCourseById), new { id })!, "self", "GET"),
-                new LinkDto(Url.Action("Enroll", "Enrollments", new { })!, "enroll", "POST")
+                new LinkDto(Url.Action("Enroll", "Enrollments", new { })!, "request-enrollment", "POST")
             }
         });
     }
@@ -152,6 +152,7 @@ public class CoursesController(
     /// Angular SignalStore's optimistic delete rolls back and restores the row.
     /// </summary>
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Instructor,Admin")]
     public async Task<IActionResult> DeleteCourse(int id, CancellationToken ct)
     {
         var course = await context.Courses.FindAsync([id], ct);

@@ -10,4 +10,5 @@ public class Assessment
     // Foreign key + navigation to the owning course
     public int CourseId { get; set; }
     public Course Course { get; set; } = null!;
+    public ICollection<Grade> Grades { get; set; } = new List<Grade>();
 }

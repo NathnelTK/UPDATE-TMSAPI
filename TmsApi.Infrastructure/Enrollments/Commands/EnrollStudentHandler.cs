@@ -20,9 +20,15 @@ public class EnrollStudentHandler(
         EnrollStudentCommand command, CancellationToken ct)
     {
         // Step 1: Find course by code G�� 404 if not found
+        var student = await context.Students
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == command.StudentId && !s.IsDeleted, ct);
+        if (student is null || !student.IsActive)
+            return Result<EnrollmentCreated, EnrollmentError>.Failure(
+                new EnrollmentError("student_inactive", "Only active students can enroll."));
+
         var course = await context.Courses
             .AsNoTracking()
-            .Include(c => c.Enrollments)
             .FirstOrDefaultAsync(c => c.Code == command.CourseCode, ct);
 
         if (course is null)
@@ -30,7 +36,7 @@ public class EnrollStudentHandler(
                 EnrollmentError.CourseNotFound(command.CourseCode));
 
         // Step 2: Check capacity G�� 409 if full
-        if (course.Enrollments.Count >= course.MaxCapacity)
+        if (await context.Enrollments.CountAsync(e => e.CourseId == course.Id && !e.IsArchived && e.Status != EnrollmentStatus.Rejected, ct) >= course.MaxCapacity)
             return Result<EnrollmentCreated, EnrollmentError>.Failure(
                 EnrollmentError.CourseFull(course.Title, course.MaxCapacity));
 

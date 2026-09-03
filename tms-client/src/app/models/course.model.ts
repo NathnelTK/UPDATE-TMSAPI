@@ -8,6 +8,16 @@ export interface Course {
   title: string;
   maxCapacity: number;
   enrollmentCount: number;
+  description: string;
+  category: string;
+  duration: string;
+  minimumRequirements: string;
+  prerequisites: string;
+  startDate: string | null;
+  endDate: string | null;
+  enrollmentStartDate: string | null;
+  enrollmentEndDate: string | null;
+  status: string;
 }
 
 /** Envelope for `GET /api/courses` — TMS API contract list shape (`PagedResponse<T>`). */

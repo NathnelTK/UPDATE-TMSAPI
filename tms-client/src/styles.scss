@@ -1,5 +1,72 @@
 @use '@angular/material' as mat;
 
+.page-stack {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.page-heading h2 {
+  margin: .35rem 0 .5rem;
+}
+
+.page-heading p,
+.record-row span,
+.record-row small {
+  color: var(--muted-text, #667085);
+}
+
+.record-list {
+  display: grid;
+  gap: .75rem;
+}
+
+.record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.record-row div {
+  display: grid;
+  gap: .35rem;
+}
+
+.record-row b {
+  color: var(--accent, #6d4aff);
+  white-space: nowrap;
+}
+
+.error-text { color: #b42318; }
+
+.admin-overview { max-width: none; }
+.admin-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.metric { display: flex; align-items: center; gap: 1rem; padding: 1.25rem; }
+.metric > .material-icons { color: var(--tms-primary); font-size: 1.8rem; }
+.metric div { display: grid; gap: .25rem; }
+.metric b { font-size: 1.55rem; line-height: 1; }
+.metric span { color: var(--tms-text-muted); font-size: .82rem; }
+.admin-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.panel { padding: 1.25rem; display: grid; gap: 1rem; }
+.section-heading { display: flex; justify-content: space-between; align-items: flex-start; }
+.section-heading h3 { margin: .25rem 0 0; }
+.queue-row { display: flex; justify-content: space-between; padding: .8rem 0; border-bottom: 1px solid var(--tms-border); }
+.student-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.student-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.quick-link { display: flex; align-items: center; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid var(--tms-border); color: var(--tms-text); font-weight: 600; }
+.quick-link:hover { color: var(--tms-primary); text-decoration: none; }
+.quick-link .material-icons { color: var(--tms-primary); }
+.catalog-toolbar { display: flex; align-items: center; gap: 1rem; padding: .8rem 1rem; }
+.catalog-toolbar .search-box { flex: 1; }
+.result-count { color: var(--tms-text-muted); font-size: .85rem; white-space: nowrap; }
+.catalog-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.loading-card { height: 230px; background: linear-gradient(100deg, var(--tms-surface) 35%, var(--tms-surface-hover) 50%, var(--tms-surface) 65%); background-size: 300% 100%; animation: loading 1.4s infinite; }
+@keyframes loading { to { background-position: -150% 0; } }
+@media (max-width: 900px) { .admin-metrics, .catalog-grid, .student-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .admin-columns, .student-columns { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .admin-metrics, .catalog-grid { grid-template-columns: 1fr; } .catalog-toolbar { align-items: stretch; flex-direction: column; } }
+
 /* ============================================================================
    TMS design system
    ----------------------------------------------------------------------------
@@ -12,6 +79,7 @@
    ========================================================================== */
 
 html {
+  color-scheme: light;
   @include mat.theme(
     (
       color: (
@@ -22,7 +90,6 @@ html {
       density: 0,
     )
   );
-  color-scheme: light;
 }
 
 :root[data-theme='dark'] {

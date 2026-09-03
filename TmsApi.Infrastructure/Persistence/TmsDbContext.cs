@@ -17,6 +17,12 @@ public class TmsDbContext(DbContextOptions<TmsDbContext> options) : IdentityDbCo
 
     // M11 Session 2 - Exercise 5: refresh tokens for JWT rotation + theft detection.
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Attendance> AttendanceRecords => Set<Attendance>();
+    public DbSet<Grade> Grades => Set<Grade>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<GrantProgram> GrantPrograms => Set<GrantProgram>();
+    public DbSet<GrantApplication> GrantApplications => Set<GrantApplication>();
+    public DbSet<GrantAllocation> GrantAllocations => Set<GrantAllocation>();
 
     /// <summary>
     /// Applies all entity configurations found in the assembly containing TmsDbContext.

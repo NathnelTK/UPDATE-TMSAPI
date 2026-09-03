@@ -23,6 +23,12 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
         builder.Property(c => c.Title)
             .IsRequired()                          // NOT NULL
             .HasMaxLength(200);                    // Max length for course title
+        builder.Property(c => c.Description).HasMaxLength(2000).IsRequired();
+        builder.Property(c => c.Category).HasMaxLength(100).IsRequired();
+        builder.Property(c => c.Duration).HasMaxLength(100).IsRequired();
+        builder.Property(c => c.MinimumRequirements).HasMaxLength(500).IsRequired();
+        builder.Property(c => c.Prerequisites).HasMaxLength(500).IsRequired();
+        builder.Property(c => c.Status).HasMaxLength(40).IsRequired();
 
         builder.Property(c => c.MaxCapacity)
             .IsRequired();                         // NOT NULL

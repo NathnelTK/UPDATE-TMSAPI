@@ -10,7 +10,17 @@ public record CourseResponseDto(
     string Code,
     string Title,
     int MaxCapacity,
-    int EnrollmentCount
+    int EnrollmentCount,
+    string Description,
+    string Category,
+    string Duration,
+    string MinimumRequirements,
+    string Prerequisites,
+    DateOnly? StartDate,
+    DateOnly? EndDate,
+    DateOnly? EnrollmentStartDate,
+    DateOnly? EnrollmentEndDate,
+    string Status
 );
 
 // --- M7 Session 4 - Exercise 7: Whitelist of fields clients may request via ?fields= ---
@@ -26,5 +36,15 @@ public static class CourseDtoFields
         nameof(CourseResponseDto.Title),
         nameof(CourseResponseDto.MaxCapacity),
         nameof(CourseResponseDto.EnrollmentCount)
+        ,nameof(CourseResponseDto.Description)
+        ,nameof(CourseResponseDto.Category)
+        ,nameof(CourseResponseDto.Duration)
+        ,nameof(CourseResponseDto.MinimumRequirements)
+        ,nameof(CourseResponseDto.Prerequisites)
+        ,nameof(CourseResponseDto.StartDate)
+        ,nameof(CourseResponseDto.EndDate)
+        ,nameof(CourseResponseDto.EnrollmentStartDate)
+        ,nameof(CourseResponseDto.EnrollmentEndDate)
+        ,nameof(CourseResponseDto.Status)
     };
 }

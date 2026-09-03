@@ -50,7 +50,7 @@
   color: var(--tms-primary);
   text-decoration: none;
 }
-.card-description { color: var(--tms-text-muted); font-size: 0.84rem; line-height: 1.5; margin: -0.25rem 0 0; }
+.card-description { color: var(--tms-text-muted); font-size: 0.84rem; line-height: 1.5; margin: -0.25rem 0 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .card-meta { gap: 0.9rem; color: var(--tms-text-faint); font-size: 0.72rem; }
 .card-meta span { gap: 0.25rem; }
 .card-meta .material-icons { font-size: 15px; }

@@ -1,89 +1,46 @@
-<section class="hero">
-  <div class="hero-copy">
-    <span class="eyebrow">LEARNING OPERATIONS / 2026</span>
-    <h1>Welcome back{{ user() ? ', ' + user()!.displayName : '' }}</h1>
-    <p>Build the capabilities your team needs next. Your learning workspace is ready.</p>
-    <div class="hero-actions">
-      <a class="tms-btn tms-btn--primary" routerLink="/enroll"><span class="material-icons">add_task</span> Start an enrollment</a>
-      <a class="text-action" routerLink="/schedule">View my schedule <span class="material-icons">arrow_forward</span></a>
+@if (auth.hasRole('Admin')) {
+  <section class="admin-overview page-stack">
+    <div class="page-heading">
+      <span class="eyebrow">REGISTRAR OVERVIEW</span>
+      <h2>Training operations</h2>
+      <p>Monitor learners, enrollment demand, and funding activity from one workspace.</p>
     </div>
-  </div>
-  <div class="progress-card">
-    <div class="progress-ring"><strong>{{ completionRate() }}%</strong><span>catalog</span></div>
-    <div><span class="progress-label">Learning momentum</span><strong>On track</strong><small>2 courses recommended this month</small></div>
-  </div>
-</section>
-
-<section class="kpis">
-  <div class="kpi tms-card">
-    <span class="kpi-icon i-courses material-icons">library_books</span>
-    <div>
-      <span class="kpi-value">{{ totalCourses() }}</span>
-     <span class="kpi-label">Available courses</span>
-    </div>
-  </div>
-  <div class="kpi tms-card">
-    <span class="kpi-icon i-open material-icons">event_available</span>
-    <div>
-      <span class="kpi-value">{{ openCourses() }}</span>
-      <span class="kpi-label">Accepting enrollments</span>
-    </div>
-  </div>
-  <div class="kpi tms-card">
-    <span class="kpi-icon i-seats material-icons">chair_alt</span>
-    <div>
-      <span class="kpi-value">{{ openSeats() }}</span>
-      <span class="kpi-label">Open seats</span>
-    </div>
-  </div>
-</section>
-
-<section class="workspace-grid">
-  <article class="tms-card next-up">
-    <div class="section-heading"><div><span class="eyebrow">YOUR NEXT STEP</span><h2>Continue learning</h2></div><span class="material-icons heading-icon">auto_awesome</span></div>
-    <div class="next-item"><div class="course-avatar">TS</div><div class="next-info"><strong>TypeScript Essentials</strong><span>Module 4 of 8 · 38 min remaining</span><div class="mini-progress"><span></span></div></div><span class="material-icons play">play_circle</span></div>
-    <div class="next-item"><div class="course-avatar course-avatar--green">GI</div><div class="next-info"><strong>Git and Collaborative Workflows</strong><span>Next session · Tomorrow, 10:00 AM</span></div><span class="material-icons muted-icon">event</span></div>
-  </article>
-  <article class="tms-card activity-card">
-    <div class="section-heading"><div><span class="eyebrow">TEAM ACTIVITY</span><h2>Workspace pulse</h2></div><span class="live-dot">Live</span></div>
-    <div class="activity-row"><span class="material-icons activity-icon purple">groups</span><div><strong>24 learners active</strong><span>Across 8 learning tracks</span></div></div>
-    <div class="activity-row"><span class="material-icons activity-icon orange">verified</span><div><strong>12 certifications earned</strong><span>In the last 30 days</span></div></div>
-  </article>
-</section>
-
-<section class="catalog">
-  <div class="catalog-head">
-    <div><span class="eyebrow">EXPLORE PROGRAMS</span><h2>Course catalog</h2></div>
-    <span class="catalog-count">{{ filteredCourses().length }} results</span>
-  </div>
-  <div class="catalog-tools">
-    <label class="search-box"><span class="material-icons">search</span><input [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" placeholder="Search courses or codes" aria-label="Search courses or codes" /><kbd>/</kbd></label>
-    <div class="filters" role="list" aria-label="Course tracks">
-      @for (track of tracks(); track track) { <button class="filter" [class.active]="selectedTrack() === track" (click)="setTrack(track)">{{ track }}</button> }
-    </div>
-  </div>
-
-  @if (coursesResource.isLoading()) {
-    <div class="grid">
-      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
-        <div class="tms-card skeleton"></div>
-      }
-    </div>
-  } @else if (coursesResource.error()) {
-    <div class="tms-card state error">
-      <span class="material-icons">cloud_off</span>
-      <div>
-        <strong>Could not load courses.</strong>
-        <p>Make sure the .NET API is running at the configured URL.</p>
+    @if (adminResource.isLoading()) {
+      <div class="tms-card state">Loading operational metrics...</div>
+    } @else if (adminResource.error()) {
+      <div class="tms-card state error">The administrator dashboard could not be loaded.</div>
+    } @else {
+      <div class="admin-metrics">
+        <article class="tms-card metric"><span class="material-icons">groups</span><div><b>{{ adminResource.value()?.activeStudents ?? 0 }}</b><span>Active students</span></div></article>
+        <article class="tms-card metric"><span class="material-icons">pending_actions</span><div><b>{{ adminResource.value()?.pendingEnrollments ?? 0 }}</b><span>Enrollment requests</span></div></article>
+        <article class="tms-card metric"><span class="material-icons">school</span><div><b>{{ adminResource.value()?.activeEnrollments ?? 0 }}</b><span>Active enrollments</span></div></article>
+        <article class="tms-card metric"><span class="material-icons">account_balance</span><div><b>{{ adminResource.value()?.remainingGrantBudget ?? 0 | number:'1.0-0' }} Birr</b><span>Remaining grant budget</span></div></article>
       </div>
+      <div class="admin-columns">
+        <article class="tms-card panel"><div class="section-heading"><div><span class="eyebrow">WORK QUEUE</span><h3>Needs attention</h3></div><span class="material-icons">assignment_late</span></div><div class="queue-row"><span>Pending enrollments</span><strong>{{ adminResource.value()?.pendingEnrollments ?? 0 }}</strong></div><div class="queue-row"><span>Grant applications</span><strong>{{ adminResource.value()?.pendingGrantApplications ?? 0 }}</strong></div><a class="tms-btn tms-btn--primary" routerLink="/admin/enrollments">Open enrollment requests</a></article>
+        <article class="tms-card panel"><div class="section-heading"><div><span class="eyebrow">PROGRAM HEALTH</span><h3>Current totals</h3></div><span class="material-icons">analytics</span></div><div class="queue-row"><span>Courses in catalog</span><strong>{{ adminResource.value()?.totalCourses ?? 0 }}</strong></div><div class="queue-row"><span>Completed enrollments</span><strong>{{ adminResource.value()?.completedEnrollments ?? 0 }}</strong></div><div class="queue-row"><span>Allocated grants</span><strong>{{ adminResource.value()?.allocatedGrantAmount ?? 0 | number:'1.0-0' }} Birr</strong></div><a class="tms-btn tms-btn--ghost" routerLink="/admin/courses">Manage course catalog</a></article>
+      </div>
+    }
+  </section>
+} @else {
+  <section class="student-home page-stack">
+    <div class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">STUDENT PORTAL / 2026</span>
+        <h1>Welcome back{{ user() ? ', ' + user()!.displayName : '' }}</h1>
+        <p>Manage your training, monitor your progress, and find the next course for your career path.</p>
+        <div class="hero-actions"><a class="tms-btn tms-btn--primary" routerLink="/courses"><span class="material-icons">menu_book</span> Browse course catalog</a><a class="text-action" routerLink="/enrollments">View my enrollments <span class="material-icons">arrow_forward</span></a></div>
+      </div>
+      <div class="progress-card"><div class="progress-ring"><strong>{{ completionRate() }}%</strong><span>attendance</span></div><div><span class="progress-label">Training progress</span><strong>{{ summaryResource.value()?.weightedScore ?? 0 }} weighted score</strong><small>Calculated from published assessments</small></div></div>
     </div>
-  } @else {
-    <div class="grid">
-      @for (course of filteredCourses(); track course.id) {
-        <tms-course-card [course]="course" (enrollClicked)="handleEnroll($event)" />
-      } @empty {
-        <div class="tms-card state">No courses are available this term.</div>
-      }
+    <div class="student-metrics">
+      <article class="tms-card metric"><span class="material-icons">event_available</span><div><b>{{ summaryResource.value()?.attendancePercentage ?? 0 }}%</b><span>Attendance</span></div></article>
+      <article class="tms-card metric"><span class="material-icons">school</span><div><b>{{ summaryResource.value()?.presentSessions ?? 0 }}</b><span>Sessions attended</span></div></article>
+      <article class="tms-card metric"><span class="material-icons">notifications</span><div><b>{{ summaryResource.value()?.unreadNotifications ?? 0 }}</b><span>Unread updates</span></div></article>
     </div>
-  }
-</section>
+    <div class="student-columns">
+      <article class="tms-card panel"><div class="section-heading"><div><span class="eyebrow">YOUR RECORD</span><h3>Learning snapshot</h3></div><span class="material-icons">insights</span></div><div class="queue-row"><span>Recorded sessions</span><strong>{{ summaryResource.value()?.totalSessions ?? 0 }}</strong></div><div class="queue-row"><span>Published weighted score</span><strong>{{ summaryResource.value()?.weightedScore ?? 0 }}</strong></div><div class="queue-row"><span>Student number</span><strong>{{ studentResource.value()?.registrationNumber ?? 'Loading...' }}</strong></div></article>
+      <article class="tms-card panel"><div class="section-heading"><div><span class="eyebrow">QUICK ACCESS</span><h3>Training tools</h3></div><span class="material-icons">launch</span></div><a class="quick-link" routerLink="/schedule"><span class="material-icons">calendar_month</span> My schedule</a><a class="quick-link" routerLink="/attendance"><span class="material-icons">event_available</span> Attendance records</a><a class="quick-link" routerLink="/grades"><span class="material-icons">grade</span> Assessment results</a><a class="quick-link" routerLink="/grants"><span class="material-icons">account_balance</span> Grant applications</a></article>
+    </div>
+  </section>
+}

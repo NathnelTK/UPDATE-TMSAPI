@@ -26,9 +26,11 @@ public class EnrollmentsController(IMediator mediator, TmsDbContext db) : Contro
     /// <summary>
     /// GET /api/v2/enrollments — the full approval queue with student/course names.
     /// </summary>
+    [Authorize]
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken ct)
     {
+        if (!User.IsInRole("Admin") && !User.IsInRole("Instructor")) return Forbid();
         var rows = await mediator.Send(new GetAllEnrollmentsQuery(), ct);
         return Ok(rows);
     }
@@ -37,11 +39,18 @@ public class EnrollmentsController(IMediator mediator, TmsDbContext db) : Contro
     /// POST /api/v2/enrollments — enroll a student by course code.
     /// Maps Result&lt;T,E&gt; to correct HTTP status codes via Match().
     /// </summary>
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Enroll(
         EnrollStudentCommand command,
         CancellationToken ct)
     {
+        if (!User.IsInRole("Admin") && !User.IsInRole("Instructor"))
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var ownsStudent = userId is not null && await db.Students.AnyAsync(s => s.Id == command.StudentId && s.UserId == userId, ct);
+            if (!ownsStudent) return Forbid();
+        }
         var result = await mediator.Send(command, ct);
 
         return result.Match<IActionResult>(
@@ -69,10 +78,16 @@ public class EnrollmentsController(IMediator mediator, TmsDbContext db) : Contro
     /// <summary>
     /// GET /api/v2/enrollments/{studentId}/schedule — get a student's enrolled courses.
     /// </summary>
+    [Authorize]
     [HttpGet("{studentId:int}/schedule")]
     public async Task<IActionResult> GetSchedule(
         int studentId, CancellationToken ct)
     {
+        if (!User.IsInRole("Admin") && !User.IsInRole("Instructor"))
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (userId is null || !await db.Students.AnyAsync(s => s.Id == studentId && s.UserId == userId, ct)) return Forbid();
+        }
         var schedule = await mediator.Send(
             new GetStudentScheduleQuery(studentId), ct);
         return Ok(schedule);
@@ -83,7 +98,7 @@ public class EnrollmentsController(IMediator mediator, TmsDbContext db) : Contro
     /// Requires a valid JWT so the bearer token is genuinely exercised end-to-end.
     /// </summary>
     [HttpPost("{id:int}/approve")]
-    [Authorize]
+    [Authorize(Roles = "Admin,Instructor")]
     public Task<IActionResult> Approve(int id, CancellationToken ct)
         => SetStatusAsync(id, EnrollmentStatus.Approved, ct);
 
@@ -91,7 +106,7 @@ public class EnrollmentsController(IMediator mediator, TmsDbContext db) : Contro
     /// POST /api/v2/enrollments/{id}/reject — registrar rejects a pending enrollment.
     /// </summary>
     [HttpPost("{id:int}/reject")]
-    [Authorize]
+    [Authorize(Roles = "Admin,Instructor")]
     public Task<IActionResult> Reject(int id, CancellationToken ct)
         => SetStatusAsync(id, EnrollmentStatus.Rejected, ct);
 
